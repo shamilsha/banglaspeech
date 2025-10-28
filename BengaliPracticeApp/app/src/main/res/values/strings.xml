@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">BengaliPracticeApp</string>
+    <string name="correct_answer_feedback">✅ Correct!</string>
+    <string name="incorrect_answer_details">❌ Incorrect. Detected: %1$s. Expected: %2$s</string>
+    <string name="correct_answer_display">Correct: %1$s</string>
+    <string name="audio_error">Audio Error: %1$s</string>
+    <string name="audio_feedback_correct">Correct</string>
+    <string name="audio_feedback_incorrect">Incorrect. The correct answer is</string>
+    <string name="mic_permission_required">Microphone permission is required to speak your answer.</string>
+    <string name="speech_prompt">Speak your English translation</string>
+    <string name="speech_recognition_failed">Didn\'t catch that. Please try again.</string>
+    <string name="listening">Listening...</string>
+    <string name="error_audio">Audio recording error</string>
+    <string name="error_client">Client side error</string>
+    <string name="error_insufficient_permissions">Insufficient permissions</string>
+    <string name="error_network">Network error</string>
+    <string name="error_network_timeout">Network timeout</string>
+    <string name="error_no_match">No match</string>
+    <string name="error_recognizer_busy">Recognizer busy</string>
+    <string name="error_server">Error from server</string>
+    <string name="error_speech_timeout">No speech input</string>
+</resources>
