@@ -2,434 +2,348 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Bidirectional Voice Translator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Voice Translator</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Use Phosphor icons for a modern look -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Use a clear, modern font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Custom styles for the microphone button animation */
-        .listening-animation {
-            animation: pulse-red 1s infinite;
+        /* Custom styles for aesthetic appeal and responsiveness */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc; /* Light gray background */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container-card {
+            background-color: white;
+            padding: 3rem 2rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            width: 100%;
+            border-top: 5px solid #06B6D4; /* Cyan border for a modern touch */
+        }
+        .mic-button {
+            transition: all 0.2s ease-in-out;
+        }
+        .mic-button:hover {
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+        }
+        .mic-button.recording {
+            animation: pulse-red 1.5s infinite;
+            background-color: #EF4444; /* Red while recording */
+            color: white;
         }
         @keyframes pulse-red {
             0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
             100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
-        .container-shadow {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        /* Style for the Speak button */
+        .speak-button {
+            transition: background-color 0.2s;
         }
-
-        /* Ensure smooth scrolling on mobile */
-        body {
-            -webkit-tap-highlight-color: transparent; /* Remove tap delay/highlight */
+        .speak-button:hover {
+            background-color: #0c8c9e;
         }
-        
-        /* Make the language options responsive */
-        #target-lang-options {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 8px; /* Equivalent to space-x-2 */
+        .select-wrapper {
+            position: relative;
+        }
+        .select-wrapper::after {
+            content: '▼';
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: #4a5568;
+        }
+        #target-language-select {
+            appearance: none;
+            padding-right: 2.5rem;
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen font-[Inter] flex items-center justify-center p-4">
+<body>
 
-    <div id="app" class="w-full max-w-lg bg-white rounded-xl container-shadow p-6 sm:p-8">
+<div class="container-card">
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">Universal Voice Translator</h1>
+    <p class="text-center text-gray-500 mb-6">Speak in English, get instant translation and audio.</p>
 
-        <h1 class="text-3xl font-extrabold text-gray-800 text-center mb-6">
-            Real-Time Language Bridge
-        </h1>
-
-        <!-- Language Selection -->
-        <div class="mb-6 bg-indigo-50 p-4 rounded-xl">
-            <h2 class="text-base font-semibold text-indigo-800 mb-3">Select Target Language:</h2>
-            <div id="target-lang-options">
-                <!-- Radio buttons will be inserted here by JS -->
-            </div>
+    <!-- Language Selector -->
+    <div class="flex justify-center mb-8">
+        <div class="select-wrapper w-full max-w-sm">
+            <select id="target-language-select"
+                    class="w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                <option value="fr-FR" data-name="French">Translate to French</option>
+                <option value="es-ES" data-name="Spanish">Translate to Spanish</option>
+                <option value="it-IT" data-name="Italian">Translate to Italian</option>
+            </select>
         </div>
-
-        <!-- Language Direction Header -->
-        <div class="flex justify-between items-center mb-6 border-b pb-4">
-            <div class="text-center w-1/3">
-                <span class="text-sm font-medium text-gray-500">Source</span>
-                <p id="source-lang-display" class="text-xl sm:text-2xl font-bold text-gray-900 mt-1">Bengali</p>
-            </div>
-            
-            <button id="swap-btn" class="p-3 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition duration-150 transform hover:rotate-180 active:scale-90" onclick="swapLanguages()">
-                <i class="ph ph-arrows-left-right text-xl"></i>
-            </button>
-
-            <div class="text-center w-1/3">
-                <span class="text-sm font-medium text-gray-500">Target</span>
-                <p id="target-lang-display" class="text-xl sm:text-2xl font-bold text-gray-900 mt-1">French</p>
-            </div>
-        </div>
-
-        <!-- Translation Output Area -->
-        <div class="mb-8 space-y-4">
-            <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-inner min-h-[80px]">
-                <p class="text-xs font-semibold text-indigo-500 mb-1">YOUR SPEECH (Source Text)</p>
-                <p id="source-text" class="text-gray-700 text-base italic"></p>
-            </div>
-            <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 min-h-[100px]">
-                <p class="text-xs font-semibold text-indigo-700 mb-1">TRANSLATION (Target Text)</p>
-                <!-- Added a min-h for better layout stability when empty -->
-                <p id="translated-text" class="text-gray-900 text-lg font-medium min-h-[24px]"></p>
-                <button id="play-tts-btn" class="mt-2 text-indigo-600 hover:text-indigo-800 disabled:text-gray-400 disabled:cursor-not-allowed hidden" onclick="replayTTS()">
-                    <i class="ph ph-speaker-simple-high text-lg mr-1"></i> Replay
-                </button>
-            </div>
-        </div>
-
-        <!-- Microphone & Status -->
-        <div class="flex flex-col items-center">
-            <button id="mic-button" 
-                    class="w-24 h-24 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg transition duration-300 transform active:scale-95 disabled:bg-gray-400 disabled:shadow-none"
-                    onclick="toggleSpeechRecognition()">
-                <i id="mic-icon" class="ph ph-microphone-fill text-4xl"></i>
-            </button>
-            <p id="status-message" class="mt-4 text-sm font-medium text-gray-500">Click to start speaking</p>
-            
-            <div id="loading-spinner" class="mt-4 hidden">
-                <div class="w-6 h-6 border-4 border-indigo-300 border-t-indigo-600 rounded-full animate-spin"></div>
-            </div>
-
-            <!-- Error/Feedback Box -->
-            <div id="error-box" class="mt-4 p-3 bg-red-100 text-red-700 rounded-lg hidden text-sm w-full text-center border border-red-200"></div>
-        </div>
-
+    </div>
+    
+    <!-- Source Language: English (Speech-to-Text) -->
+    <div class="mb-8 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+        <h2 class="text-xl font-semibold text-gray-700 mb-3 flex items-center">
+            Source Text (English)
+            <span id="listening-status" class="ml-4 text-sm font-medium text-red-500 hidden">... Listening</span>
+        </h2>
+        <textarea id="source-text"
+                  rows="4"
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-cyan-500 focus:border-cyan-500 resize-none text-gray-700"
+                  placeholder="Speak into the microphone to see the English text appear here..."
+                  readonly></textarea>
+        <p id="error-message" class="text-red-500 mt-2 text-sm hidden">Microphone access denied or not supported.</p>
     </div>
 
-    <script>
-        // --- Configuration and State ---
-        const LANGUAGES = {
-            'French': { code: 'fr-FR', translation: 'fr' },
-            'Spanish': { code: 'es-ES', translation: 'es' },
-            'Italian': { code: 'it-IT', translation: 'it' }
+    <!-- Translator Controls -->
+    <div class="flex flex-col items-center justify-center space-y-4 mb-8">
+        <button id="mic-btn"
+                class="mic-button bg-cyan-500 text-white p-5 rounded-full shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-cyan-300"
+                aria-label="Start Recording"
+                disabled>
+            <!-- Microphone icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+        </button>
+        <button id="speak-btn"
+                class="speak-button bg-green-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out focus:outline-none focus:ring-4 focus:ring-green-300 disabled:opacity-50"
+                aria-label="Speak Translation"
+                disabled>
+            Speak French
+        </button>
+    </div>
+
+    <!-- Target Language: Translated Text -->
+    <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <h2 id="translated-title" class="text-xl font-semibold text-gray-700 mb-3 flex items-center">
+            Translated Text (French)
+        </h2>
+        <textarea id="translated-text"
+                  rows="4"
+                  class="w-full p-3 border border-blue-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 resize-none text-gray-800 font-medium"
+                  placeholder="The French translation will appear here..."
+                  readonly></textarea>
+    </div>
+
+</div>
+
+<script>
+    // --- 1. Tooling and Constants Setup ---
+    const sourceTextarea = document.getElementById('source-text');
+    const translatedTextarea = document.getElementById('translated-text');
+    const micBtn = document.getElementById('mic-btn');
+    const speakBtn = document.getElementById('speak-btn');
+    const listeningStatus = document.getElementById('listening-status');
+    const errorMessage = document.getElementById('error-message');
+    const langSelect = document.getElementById('target-language-select');
+    const translatedTitle = document.getElementById('translated-title');
+
+    // Language configuration
+    const SOURCE_LANGUAGE_CODE = 'en-US'; // English (United States) for speech recognition
+    let TARGET_LANGUAGE_CODE = langSelect.value; // Starts as fr-FR
+
+    let recognition = null;
+    let isRecording = false;
+
+    // --- Dynamic UI Update Function ---
+    const updateTargetLanguageUI = () => {
+        TARGET_LANGUAGE_CODE = langSelect.value;
+        const selectedOption = langSelect.options[langSelect.selectedIndex];
+        const langName = selectedOption.getAttribute('data-name');
+        
+        translatedTitle.textContent = `Translated Text (${langName})`;
+        speakBtn.textContent = `Speak ${langName}`;
+        translatedTextarea.placeholder = `The ${langName} translation will appear here...`;
+        
+        // Clear previous translation when language changes
+        translatedTextarea.value = '';
+        speakBtn.disabled = true;
+    };
+
+
+    // --- 2. Initialize Speech Recognition ---
+    const initializeRecognition = () => {
+        // Check for browser support
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+            errorMessage.textContent = "Speech Recognition is not supported in this browser. Please use Chrome or Edge.";
+            errorMessage.classList.remove('hidden');
+            micBtn.disabled = true;
+            return;
+        }
+
+        // Initialize the recognition object
+        recognition = new SpeechRecognition();
+        recognition.continuous = false; // Stop after a single phrase
+        recognition.interimResults = false; // Only return final results
+        recognition.lang = SOURCE_LANGUAGE_CODE;
+
+        // Recognition Event Handlers
+        recognition.onstart = () => {
+            isRecording = true;
+            micBtn.classList.add('recording');
+            listeningStatus.classList.remove('hidden');
+            sourceTextarea.value = ''; // Clear previous text
+            translatedTextarea.value = '';
+            speakBtn.disabled = true;
         };
-        const BENGALI = { name: 'Bengali', code: 'bn-IN', translation: 'bn' };
-        
-        // Global State
-        let currentSource = BENGALI;
-        let currentTarget = { name: 'French', ...LANGUAGES['French'] }; // Default to French
 
-        let isListening = false;
-        let recognition = null;
-        const apiKey = ""; // API key is handled by the canvas environment
-
-        // --- DOM Elements ---
-        const $sourceLangDisplay = document.getElementById('source-lang-display');
-        const $targetLangDisplay = document.getElementById('target-lang-display');
-        const $sourceText = document.getElementById('source-text');
-        const $translatedText = document.getElementById('translated-text');
-        const $statusMessage = document.getElementById('status-message');
-        const $micButton = document.getElementById('mic-button');
-        const $micIcon = document.getElementById('mic-icon');
-        const $errorBox = document.getElementById('error-box');
-        const $loadingSpinner = document.getElementById('loading-spinner');
-        const $targetLangOptions = document.getElementById('target-lang-options');
-        const $playTTSBtn = document.getElementById('play-tts-btn');
-
-        // --- Utility Functions ---
-
-        function displayError(message) {
-            $errorBox.textContent = message;
-            $errorBox.classList.remove('hidden');
-            console.error('ERROR:', message);
-            // Hide after 7 seconds
-            setTimeout(() => {
-                $errorBox.classList.add('hidden');
-            }, 7000);
-        }
-
-        function setLoading(isLoading) {
-            $loadingSpinner.classList.toggle('hidden', !isLoading);
-            $micButton.disabled = isLoading;
-        }
-        
-        // A helper function to reset UI when needed
-        function resetUI() {
-            $sourceText.textContent = '';
-            $translatedText.textContent = '';
-            $playTTSBtn.classList.add('hidden');
-            $playTTSBtn.disabled = true;
-            $statusMessage.textContent = 'Click to start speaking';
-        }
-
-        function updateUI() {
-            $sourceLangDisplay.textContent = currentSource.name;
-            $targetLangDisplay.textContent = currentTarget.name;
+        recognition.onresult = (event) => {
+            const transcript = Array.from(event.results)
+                .map(result => result[0].transcript)
+                .join('');
             
-            // Re-render radio buttons to show selection
-            renderLanguageOptions();
-            resetUI();
-        }
+            sourceTextarea.value = transcript;
+            
+            if (transcript) {
+                // Once we have the source text, automatically call the translation function
+                translateAndDisplay(transcript);
+            }
+        };
 
-        function renderLanguageOptions() {
-            $targetLangOptions.innerHTML = '';
-            Object.keys(LANGUAGES).forEach(langName => {
-                const lang = LANGUAGES[langName];
-                const isChecked = currentTarget.name === langName;
-                
-                const label = document.createElement('label');
-                // Use rounded-xl for a softer mobile look
-                label.className = `block cursor-pointer rounded-xl transition duration-200 active:scale-95 text-center text-sm p-0`;
-                label.innerHTML = `
-                    <input type="radio" name="target-language" value="${langName}" class="hidden" ${isChecked ? 'checked' : ''} onchange="selectTargetLanguage(this.value)">
-                    <span class="inline-block w-full py-2 px-1 rounded-xl border transition duration-200 ${
-                        isChecked ? 'bg-indigo-600 text-white font-semibold border-indigo-600' : 'bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-100'
-                    }">
-                        ${langName}
-                    </span>
-                `;
-                $targetLangOptions.appendChild(label);
+        recognition.onend = () => {
+            isRecording = false;
+            micBtn.classList.remove('recording');
+            listeningStatus.classList.add('hidden');
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Speech Recognition Error:', event.error);
+            errorMessage.textContent = `Error: ${event.error}. Please check your microphone permissions.`;
+            errorMessage.classList.remove('hidden');
+            micBtn.classList.remove('recording');
+            listeningStatus.classList.add('hidden');
+            isRecording = false;
+        };
+        
+        // Everything is ready, enable the button
+        micBtn.disabled = false;
+    };
+
+    // --- 3. Translation Function (Uses Gemini API for simulation) ---
+    const translateAndDisplay = async (text) => {
+        const langName = langSelect.options[langSelect.selectedIndex].getAttribute('data-name');
+        translatedTextarea.placeholder = `Translating to ${langName}...`;
+        
+        // The TARGET_LANGUAGE_CODE is read dynamically here
+        const targetCode = TARGET_LANGUAGE_CODE; 
+
+        // System prompt uses the dynamic language name
+        const systemPrompt = `You are a highly accurate, professional language translator. Your only job is to translate the provided English text into a grammatically correct, natural-sounding ${langName} translation. Respond with ONLY the translated ${langName} text, nothing else.`;
+        const userQuery = `Translate the following English phrase to ${langName}: "${text}"`;
+        
+        // API Configuration
+        const apiKey = ""; 
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+        const payload = {
+            contents: [{ parts: [{ text: userQuery }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            config: {
+                temperature: 0.1 
+            }
+        };
+        
+        let translatedText = "Translation failed or is unavailable.";
+        
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
-        }
 
-        // --- Main Logic Functions ---
-
-        window.selectTargetLanguage = (langName) => {
-            const langData = LANGUAGES[langName];
-            if (langData) {
-                currentTarget = { name: langName, ...langData };
-                
-                // If source was the old target (i.e., not Bengali), switch it back to Bengali
-                if (currentSource.name !== BENGALI.name && currentSource.name !== langName) {
-                    currentSource = BENGALI;
-                }
-                
-                updateUI();
-            }
-        };
-
-        window.swapLanguages = () => {
-            if (isListening || $micButton.disabled) return; // Don't swap while recording or processing
-
-            // Hold current settings
-            const tempSource = currentSource;
-            const tempTarget = currentTarget;
-
-            // Swap logic: Set new source to old target, and new target to old source.
-            currentSource = tempTarget;
-            currentTarget = tempSource;
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             
-            updateUI();
-        };
-
-        window.toggleSpeechRecognition = () => {
-            if (isListening) {
-                stopRecognition();
-            } else {
-                startRecognition();
+            const result = await response.json();
+            const candidate = result.candidates?.[0];
+            
+            if (candidate && candidate.content?.parts?.[0]?.text) {
+                translatedText = candidate.content.parts[0].text.trim(); 
             }
-        };
+        } catch (error) {
+            console.error("Translation API Error:", error);
+            translatedText = "Could not reach translation service.";
+        }
         
-        // Ensure only one TTS is playing
-        window.replayTTS = () => {
-            const text = $translatedText.textContent;
-            if (text) {
-                 speakText(text, currentTarget.code);
-            }
+        translatedTextarea.value = translatedText;
+        translatedTextarea.placeholder = `The ${langName} translation will appear here...`;
+        
+        // Enable speech button once translation is complete
+        speakBtn.disabled = translatedText.includes("failed") || translatedText.includes("Could not reach");
+    };
+
+    // --- 4. Text-to-Speech (Speaking the Translation) ---
+    const speakTranslation = () => {
+        const textToSpeak = translatedTextarea.value;
+
+        if (!textToSpeak) {
+            alert('Please translate text first.');
+            return;
         }
 
+        if (!'speechSynthesis' in window) {
+            errorMessage.textContent = "Text-to-Speech is not supported in this browser.";
+            errorMessage.classList.remove('hidden');
+            return;
+        }
+        
+        // The utterance uses the dynamic language code
+        const targetCode = TARGET_LANGUAGE_CODE; 
+        
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        
+        // Find a matching voice for the target language
+        const voices = window.speechSynthesis.getVoices();
+        const targetVoice = voices.find(voice => voice.lang === targetCode || voice.lang.startsWith(targetCode.substring(0, 2)));
+        
+        if (targetVoice) {
+            utterance.voice = targetVoice;
+        } else {
+            // Fallback: Set language code even without a specific voice
+            utterance.lang = targetCode; 
+            console.warn(`Voice for ${targetCode} not found, using default voice with correct language setting.`);
+        }
+        
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
 
-        function startRecognition() {
-            if (!('webkitSpeechRecognition' in window)) {
-                displayError('Speech Recognition is not supported. Please ensure you are using a modern browser like Chrome on Android.');
-                return;
-            }
+        window.speechSynthesis.speak(utterance);
+    };
 
-            isListening = true;
-            $micButton.classList.add('listening-animation', 'bg-red-500');
-            $micButton.classList.remove('bg-indigo-600');
-            $micIcon.classList.remove('ph-microphone-fill');
-            $micIcon.classList.add('ph-stop');
-            $statusMessage.textContent = `Listening in ${currentSource.name}... Speak clearly.`;
-            $sourceText.textContent = '';
-            $translatedText.textContent = '';
-            $playTTSBtn.classList.add('hidden');
-            $playTTSBtn.disabled = true;
-            $errorBox.classList.add('hidden');
 
-            recognition = new webkitSpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = true;
-            recognition.lang = currentSource.code;
-
-            recognition.onstart = () => {
-                isListening = true;
-            };
-
-            recognition.onresult = (event) => {
-                let interimTranscript = '';
-                let finalTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    const transcript = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        finalTranscript += transcript;
-                    } else {
-                        interimTranscript += transcript;
-                    }
-                }
-                // Only show the final transcript when recognition is done, otherwise show interim
-                $sourceText.textContent = finalTranscript || interimTranscript; 
-            };
-            
-            recognition.onspeechend = () => {
-                // Stop listening immediately after speech ends, essential for mobile
-                stopRecognition();
-            };
-
-            recognition.onerror = (event) => {
-                // Use a detailed error message for better debugging on mobile
-                stopRecognition(false); 
-                if (event.error === 'not-allowed') {
-                    displayError('Microphone access denied. Please check your browser/OS permissions for this site.');
-                } else if (event.error === 'no-speech') {
-                    displayError('No speech detected. Please speak louder or check your mic.');
-                } else {
-                    displayError(`Speech recognition error: ${event.error}`);
-                }
-            };
-
-            recognition.onend = () => {
-                stopRecognition(true); // Signal completion of listening
-            };
-
+    // --- 5. Event Listeners ---
+    micBtn.addEventListener('click', () => {
+        if (isRecording) {
+            recognition.stop();
+        } else {
             recognition.start();
         }
+    });
 
-        function stopRecognition(wasFinal = false) {
-            // Check if the recognition object is active before calling stop
-            if (recognition && isListening) {
-                 // Stop the recognition gracefully, if it's currently running
-                recognition.onend = null; // Prevent re-triggering of onend logic
-                recognition.stop();
-            }
+    speakBtn.addEventListener('click', speakTranslation);
+    
+    // Listen for changes on the language selector
+    langSelect.addEventListener('change', updateTargetLanguageUI);
 
-            if (!isListening) return; // Already stopped
-            isListening = false;
+    // Initial check and setup on page load
+    window.onload = () => {
+        updateTargetLanguageUI(); // Set initial state (French)
+        initializeRecognition();
 
-            $micButton.classList.remove('listening-animation', 'bg-red-500');
-            $micButton.classList.add('bg-indigo-600');
-            $micIcon.classList.remove('ph-stop');
-            $micIcon.classList.add('ph-microphone-fill');
-            
-            const finalTranscript = $sourceText.textContent.trim();
-
-            if (finalTranscript && wasFinal) {
-                 $statusMessage.textContent = 'Speech captured. Sending to translator...';
-                 translateAndSpeak(finalTranscript);
-            } else if (wasFinal) {
-                $statusMessage.textContent = 'No voice input received. Click to speak.';
-            } else {
-                // Error state or manual stop
-                $statusMessage.textContent = 'Ready to translate.';
+        // Important: Load voices for TTS. It may be asynchronous.
+        if ('speechSynthesis' in window) {
+            if (window.speechSynthesis.getVoices().length === 0) {
+                 window.speechSynthesis.onvoiceschanged = initializeRecognition;
             }
         }
+    };
 
-        async function translateAndSpeak(text) {
-            setLoading(true);
-            try {
-                // Clear translated text while loading
-                $translatedText.textContent = '...'; 
-                
-                const translatedText = await callGeminiTranslation(text, currentSource.translation, currentTarget.translation);
-                
-                $translatedText.textContent = translatedText;
-                $statusMessage.textContent = 'Translation complete. Speaking now...';
-                
-                // Enable replay button
-                $playTTSBtn.classList.remove('hidden');
-                $playTTSBtn.disabled = false;
-                
-                speakText(translatedText, currentTarget.code);
-
-            } catch (error) {
-                displayError(`Translation failed: ${error.message}.`);
-                $translatedText.textContent = 'Error during translation.';
-                $statusMessage.textContent = 'Translation failed.';
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        // --- LLM (Gemini API) Integration for Translation ---
-
-        async function callGeminiTranslation(text, sourceCode, targetCode) {
-            const systemPrompt = "You are an expert, multilingual translator. Your task is to accurately translate the provided text. Return ONLY the translated text, with no preamble, explanations, or quotes.";
-            const userQuery = `Translate the following from ${sourceCode} to ${targetCode}: "${text}"`;
-            
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-            };
-            
-            // Implement exponential backoff for robustness
-            for (let i = 0; i < 3; i++) {
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        // Check for specific error status codes
-                        const errorBody = await response.json().catch(() => ({}));
-                        throw new Error(`API returned status ${response.status}: ${errorBody.error?.message || response.statusText}`);
-                    }
-                    
-                    const result = await response.json();
-                    const translatedText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-
-                    if (translatedText) {
-                        return translatedText;
-                    } else {
-                        throw new Error("Translation content missing from API response.");
-                    }
-                } catch (error) {
-                    console.warn(`Translation attempt ${i + 1} failed: ${error.message}`);
-                    if (i < 2) {
-                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000 + (Math.random() * 500))); // Backoff + jitter
-                    } else {
-                        throw new Error(`Could not complete translation after multiple retries. ${error.message}`);
-                    }
-                }
-            }
-        }
-
-        // --- Text-to-Speech (TTS) ---
-
-        function speakText(text, langCode) {
-            if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(text);
-                
-                utterance.lang = langCode;
-
-                utterance.onend = () => {
-                    $statusMessage.textContent = 'Ready to translate!';
-                };
-
-                utterance.onerror = (event) => {
-                    displayError(`TTS error: Cannot speak in ${langCode}. Error: ${event.error}`);
-                    $statusMessage.textContent = 'Ready to translate (TTS Error).';
-                };
-
-                speechSynthesis.cancel(); // Stop any current speech
-                speechSynthesis.speak(utterance);
-            } else {
-                displayError('Text-to-Speech (TTS) is not supported in this browser.');
-                $statusMessage.textContent = 'Ready to translate (TTS Not Supported).';
-            }
-        }
-
-        // Initialize UI on load
-        document.addEventListener('DOMContentLoaded', updateUI);
-    </script>
+</script>
 </body>
 </html>
