@@ -60,7 +60,7 @@
             pointer-events: none;
             color: #4a5568;
         }
-        #secondary-language-select {
+        .language-select {
             appearance: none;
             padding-right: 2.5rem;
         }
@@ -77,27 +77,43 @@
 
 <div class="container-card">
     <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">Universal Voice Translator</h1>
-    <p class="text-center text-gray-500 mb-6">Speak in either language and get instant two-way translation, spoken aloud.</p>
+    <p class="text-center text-gray-500 mb-6">Choose two languages and swap the direction instantly.</p>
 
-    <!-- Global Language Selector -->
-    <div class="flex flex-col md:flex-row justify-center items-center mb-8 space-y-3 md:space-y-0 md:space-x-4">
-        <label for="secondary-language-select" class="text-gray-700 font-medium">Select Paired Language:</label>
-        <div class="select-wrapper w-full max-w-xs">
-            <select id="secondary-language-select"
-                    class="w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
-                <option value="fr-FR" data-name="French">French</option>
-                <option value="es-ES" data-name="Spanish">Spanish</option>
-                <option value="it-IT" data-name="Italian">Italian</option>
-                <option value="tr-TR" data-name="Turkish">Turkish</option>
-                <option value="ar-EG" data-name="Arabic">Arabic (Egypt)</option>
-            </select>
+    <!-- Language Selectors (Primary and Secondary Groups) -->
+    <div class="flex flex-col md:flex-row justify-center items-center mb-8 space-y-4 md:space-y-0 md:space-x-8">
+        
+        <!-- Primary Language Selector (English or Bengali) -->
+        <div class="flex flex-col items-center space-y-2">
+            <label for="primary-language-select" class="text-gray-700 font-medium">Primary Language (Group 1):</label>
+            <div class="select-wrapper w-full max-w-xs">
+                <select id="primary-language-select"
+                        class="language-select w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                    <option value="en-US" data-name="English">English</option>
+                    <option value="bn-BD" data-name="Bengali">Bengali</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Secondary Language Selector (French, Spanish, etc.) -->
+        <div class="flex flex-col items-center space-y-2">
+            <label for="secondary-language-select" class="text-gray-700 font-medium">Paired Language (Group 2):</label>
+            <div class="select-wrapper w-full max-w-xs">
+                <select id="secondary-language-select"
+                        class="language-select w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                    <option value="fr-FR" data-name="French">French</option>
+                    <option value="es-ES" data-name="Spanish">Spanish</option>
+                    <option value="it-IT" data-name="Italian">Italian</option>
+                    <option value="tr-TR" data-name="Turkish">Turkish</option>
+                    <option value="ar-EG" data-name="Arabic">Arabic (Egypt)</option>
+                </select>
+            </div>
         </div>
     </div>
     
     <!-- Translation Panels and Controls -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 panel-grid">
         
-        <!-- Panel A (Primary Language - English) -->
+        <!-- Panel A (Source) -->
         <div id="panel-A" class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
             <h2 id="title-A" class="text-xl font-bold text-gray-700 mb-3">Language A (Source)</h2>
             <textarea id="text-A"
@@ -127,7 +143,7 @@
             </button>
         </div>
 
-        <!-- Panel B (Secondary Language - Target) -->
+        <!-- Panel B (Target) -->
         <div id="panel-B" class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <h2 id="title-B" class="text-xl font-bold text-gray-700 mb-3">Language B (Target)</h2>
             <textarea id="text-B"
@@ -165,77 +181,135 @@
     const speakBtnB = document.getElementById('speak-btn-B');
     const statusA = document.getElementById('status-A');
     const errorMessage = document.getElementById('error-message');
-    const langSelect = document.getElementById('secondary-language-select');
+    
+    const primaryLangSelect = document.getElementById('primary-language-select');
+    const secondaryLangSelect = document.getElementById('secondary-language-select');
     const swapBtn = document.getElementById('swap-btn');
 
-    // Language Codes
-    const PRIMARY_CODE = 'en-US'; 
-    const PRIMARY_NAME = 'English';
+    // State variables for the selected language pair
+    let groupOneCode = 'en-US'; // Default to English
+    let groupOneName = 'English';
+    let groupTwoCode = 'fr-FR'; // Default to French
+    let groupTwoName = 'French';
     
-    // State variables for the current direction
-    let secondaryCode = langSelect.value;
-    let secondaryName = langSelect.options[langSelect.selectedIndex].getAttribute('data-name');
-    
-    let currentSourceCode = PRIMARY_CODE;
-    let currentTargetCode = secondaryCode;
-    let currentSourceName = PRIMARY_NAME;
-    let currentTargetName = secondaryName;
+    // State variables for the current translation direction
+    let currentSourceCode = groupOneCode;
+    let currentTargetCode = groupTwoCode;
+    let currentSourceName = groupOneName;
+    let currentTargetName = groupTwoName;
 
     // Speech Recognition and State
     let recognition = null;
     let isRecording = false;
 
+    // Helper function to get name from code
+    const getLanguageName = (code, selector) => {
+        const options = Array.from(selector.options);
+        const option = options.find(opt => opt.value === code);
+        return option ? option.getAttribute('data-name') : 'Unknown Language';
+    };
+
     // --- 2. Core UI Update & State Management ---
     
+    const updateDirectionState = () => {
+        // Determine the source and target based on the current direction flag
+        const isGroupOneSource = (currentSourceCode === groupOneCode || currentSourceCode === groupOneName); // Check based on code or name (less reliable, but for initial state)
+        
+        if (isGroupOneSource) {
+            currentSourceCode = groupOneCode;
+            currentSourceName = groupOneName;
+            currentTargetCode = groupTwoCode;
+            currentTargetName = groupTwoName;
+        } else {
+            currentSourceCode = groupTwoCode;
+            currentSourceName = groupTwoName;
+            currentTargetCode = groupOneCode;
+            currentTargetName = groupOneName;
+        }
+    };
+
     const updateUI = () => {
-        // Update Panel A (Source)
+        // 1. Update the direction state based on the selected groups
+        updateDirectionState();
+
+        // 2. Update Panel A (Source)
         titleA.textContent = `${currentSourceName} (Source)`;
         textA.placeholder = `Speak in ${currentSourceName}, or type, to translate...`;
         micBtnA.setAttribute('aria-label', `Start Recording ${currentSourceName}`);
 
-        // Update Panel B (Target)
+        // 3. Update Panel B (Target)
         titleB.textContent = `${currentTargetName} (Target)`;
         textB.placeholder = `The ${currentTargetName} translation will appear here...`;
         speakBtnB.textContent = `Speak ${currentTargetName}`;
         speakBtnB.setAttribute('aria-label', `Speak Translation in ${currentTargetName}`);
 
-        // Set the recognition language dynamically
+        // 4. Set the recognition language dynamically
         if (recognition) {
             recognition.lang = currentSourceCode;
         }
 
-        // Clear and disable controls initially
+        // 5. Clear and disable controls initially
         textA.value = '';
         textB.value = '';
         speakBtnB.disabled = true;
     };
     
     const swapLanguages = () => {
-        // Swap the current codes and names
-        [currentSourceCode, currentTargetCode] = [currentTargetCode, currentSourceCode];
-        [currentSourceName, currentTargetName] = [currentTargetName, currentSourceName];
+        // Swap the current direction (Group 1 Source <-> Group 2 Source)
+        const newSourceCode = currentTargetCode;
+        const newTargetCode = currentSourceCode;
+
+        currentSourceCode = newSourceCode;
+        currentTargetCode = newTargetCode;
+        
+        currentSourceName = getLanguageName(currentSourceCode, primaryLangSelect.value === currentSourceCode ? primaryLangSelect : secondaryLangSelect);
+        currentTargetName = getLanguageName(currentTargetCode, secondaryLangSelect.value === currentTargetCode ? secondaryLangSelect : primaryLangSelect);
         
         // Update the UI to reflect the new direction
         updateUI();
     };
 
-    const handleSecondaryLanguageChange = () => {
-        secondaryCode = langSelect.value;
-        secondaryName = langSelect.options[langSelect.selectedIndex].getAttribute('data-name');
+    const handleLanguageChange = (isPrimary) => {
+        const selector = isPrimary ? primaryLangSelect : secondaryLangSelect;
+        const newCode = selector.value;
+        const newName = selector.options[selector.selectedIndex].getAttribute('data-name');
         
-        // If English is currently the source, set the new selection as the target
-        if (currentSourceCode === PRIMARY_CODE) {
-            currentTargetCode = secondaryCode;
-            currentTargetName = secondaryName;
-        } 
-        // If the other language is currently the source, set the new selection as the source
-        else {
-            currentSourceCode = secondaryCode;
-            currentSourceName = secondaryName;
+        let oldCode;
+        let oldName;
+
+        // Update Group 1 or Group 2 selection
+        if (isPrimary) {
+            oldCode = groupOneCode;
+            groupOneCode = newCode;
+            groupOneName = newName;
+        } else {
+            oldCode = groupTwoCode;
+            groupTwoCode = newCode;
+            groupTwoName = newName;
         }
         
+        // If the old code was the current source, update the source to the new code
+        if (currentSourceCode === oldCode) {
+            currentSourceCode = newCode;
+            currentSourceName = newName;
+        } 
+        // If the old code was the current target, update the target to the new code
+        else if (currentTargetCode === oldCode) {
+            currentTargetCode = newCode;
+            currentTargetName = newName;
+        } else {
+            // This case handles initial state or if swap was pressed. 
+            // We just ensure the direction reflects the current selections.
+            if (currentSourceCode !== groupOneCode && currentSourceCode !== groupTwoCode) {
+                 // Reset direction to Group 1 -> Group 2 if something got out of sync
+                 currentSourceCode = groupOneCode;
+                 currentTargetCode = groupTwoCode;
+            }
+        }
+
         updateUI();
     };
+
 
     // --- 3. Initialize Speech Recognition ---
     const initializeRecognition = () => {
@@ -290,18 +364,23 @@
             isRecording = false;
         };
         
-        micBtnA.disabled = false;
+        // Wait until all initial setup is done before enabling mic
+        setTimeout(() => {
+            micBtnA.disabled = false;
+        }, 500); 
     };
 
     // --- 4. Translation Function (Uses Gemini API) ---
     const translateAndDisplay = async (text, sourceCode, targetCode, targetName) => {
         textB.placeholder = `Translating to ${targetName}...`;
         
-        const sourceName = sourceCode === PRIMARY_CODE ? PRIMARY_NAME : currentSourceName; // Use the current source name
+        // Determine the source/target names accurately for the prompt
+        const srcName = getLanguageName(sourceCode, primaryLangSelect.value === sourceCode ? primaryLangSelect : secondaryLangSelect);
+        const tgtName = getLanguageName(targetCode, secondaryLangSelect.value === targetCode ? secondaryLangSelect : primaryLangSelect);
         
         // Construct the dynamic system prompt and user query
-        const systemPrompt = `You are a highly accurate, professional language translator. Your only job is to translate the provided text from ${sourceName} into a grammatically correct, natural-sounding ${targetName} translation. Respond with ONLY the translated ${targetName} text, nothing else.`;
-        const userQuery = `Translate the following ${sourceName} phrase to ${targetName}: "${text}"`;
+        const systemPrompt = `You are a highly accurate, professional language translator. Your only job is to translate the provided text from ${srcName} into a grammatically correct, natural-sounding ${tgtName} translation. Respond with ONLY the translated ${tgtName} text, nothing else.`;
+        const userQuery = `Translate the following ${srcName} phrase to ${tgtName}: "${text}"`;
         
         // API Configuration (Your key should already be here)
         // >>> IMPORTANT: PASTE YOUR GEMINI API KEY HERE TO MAKE THE TRANSLATION WORK ON GITHUB PAGES <<<
@@ -433,12 +512,17 @@
     // Swap Button
     swapBtn.addEventListener('click', swapLanguages);
 
-    // Secondary Language Selector
-    langSelect.addEventListener('change', handleSecondaryLanguageChange);
+    // Language Selectors
+    primaryLangSelect.addEventListener('change', () => handleLanguageChange(true));
+    secondaryLangSelect.addEventListener('change', () => handleLanguageChange(false));
+
 
     // Initial setup on page load
     window.onload = () => {
-        handleSecondaryLanguageChange(); // Set initial state (English -> French)
+        // Set initial state based on default select values
+        handleLanguageChange(true); // Initialize Group 1
+        handleLanguageChange(false); // Initialize Group 2
+        updateUI(); // Final UI setup
         initializeRecognition();
 
         // Ensure voices are loaded for TTS
