@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Bidirectional Voice Translator (High-Quality TTS for All)</title>
+    <title>Unified Bidirectional Voice Translator (7 Languages)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -21,7 +21,7 @@
             background-color: white;
             padding: 3rem 2rem;
             border-radius: 1.5rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6p x rgba(0, 0, 0, 0.1);
             max-width: 1000px;
             width: 100%;
             border-top: 5px solid #06B6D4;
@@ -95,35 +95,28 @@
 <body>
 
 <div class="container-card">
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">Universal Voice Translator</h1>
-    <p class="text-center text-gray-500 mb-6">High-Quality pronunciation is now guaranteed for **all six languages** using a specialized TTS model.</p>
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language High-Quality Voice Translator</h1>
+    <p class="text-center text-gray-500 mb-6">Select your source language on the left and your target language on the right. Turkish is now included!</p>
 
-    <!-- Language Selectors (Primary and Secondary Groups) -->
-    <div class="flex flex-col md:flex-row justify-center items-center mb-8 space-y-4 md:space-y-0 md:space-x-8">
+    <!-- Language Selectors (Source and Target) -->
+    <div class="grid grid-cols-2 gap-4 mb-8">
         
-        <!-- Primary Language Selector (English or Bengali) -->
+        <!-- Source Language Selector -->
         <div class="flex flex-col items-center space-y-2">
-            <label for="primary-language-select" class="text-gray-700 font-medium">Primary Language (Group 1):</label>
+            <label for="source-language-select" class="text-gray-700 font-medium">Source Language:</label>
             <div class="select-wrapper w-full max-w-xs">
-                <select id="primary-language-select"
+                <select id="source-language-select"
                         class="language-select w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
-                    <option value="en-US" data-name="English">English</option>
-                    <option value="bn-BD" data-name="Bengali">Bengali</option>
                 </select>
             </div>
         </div>
 
-        <!-- Secondary Language Selector (French, Spanish, etc.) -->
+        <!-- Target Language Selector -->
         <div class="flex flex-col items-center space-y-2">
-            <label for="secondary-language-select" class="text-gray-700 font-medium">Paired Language (Group 2):</label>
+            <label for="target-language-select" class="text-gray-700 font-medium">Target Language:</label>
             <div class="select-wrapper w-full max-w-xs">
-                <select id="secondary-language-select"
+                <select id="target-language-select"
                         class="language-select w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
-                    <option value="fr-FR" data-name="French">French</option>
-                    <option value="es-ES" data-name="Spanish">Spanish</option>
-                    <option value="it-IT" data-name="Italian">Italian</option>
-                    <option value="tr-TR" data-name="Turkish">Turkish</option>
-                    <option value="ar-EG" data-name="Arabic">Arabic (Egypt)</option>
                 </select>
             </div>
         </div>
@@ -132,9 +125,9 @@
     <!-- Translation Panels and Controls -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 panel-grid">
         
-        <!-- Panel A (Source) -->
+        <!-- Panel A (Source Text/Input) -->
         <div id="panel-A" class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-            <h2 id="title-A" class="text-xl font-bold text-gray-700 mb-3">Language A (Source)</h2>
+            <h2 id="title-A" class="text-xl font-bold text-gray-700 mb-3"></h2>
             <textarea id="text-A"
                       rows="6"
                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-cyan-500 focus:border-cyan-500 resize-none text-gray-700 font-medium"
@@ -144,7 +137,7 @@
                 <p id="status-A" class="text-sm font-medium text-red-500 hidden">... Listening</p>
                 <button id="mic-btn-A"
                         class="mic-button bg-cyan-500 text-white p-3 rounded-full shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-cyan-300"
-                        aria-label="Start Recording Language A"
+                        aria-label="Start Recording"
                         disabled>
                     <!-- Microphone icon -->
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
@@ -162,9 +155,9 @@
             </button>
         </div>
 
-        <!-- Panel B (Target) -->
+        <!-- Panel B (Target Translation/Output) -->
         <div id="panel-B" class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h2 id="title-B" class="text-xl font-bold text-gray-700 mb-3">Language B (Target)</h2>
+            <h2 id="title-B" class="text-xl font-bold text-gray-700 mb-3"></h2>
             <textarea id="text-B"
                       rows="6"
                       class="w-full p-3 border border-blue-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 resize-none text-gray-800 font-medium"
@@ -206,142 +199,121 @@
     const errorMessage = document.getElementById('error-message');
     const ttsLoading = document.getElementById('tts-loading');
     
-    const primaryLangSelect = document.getElementById('primary-language-select');
-    const secondaryLangSelect = document.getElementById('secondary-language-select');
+    const sourceLangSelect = document.getElementById('source-language-select');
+    const targetLangSelect = document.getElementById('target-language-select');
     const swapBtn = document.getElementById('swap-btn');
 
-    // MAPPING: Use a specific, high-quality voice for each language code
-    const VOICE_MAP = {
-        'bn-BD': "Achird",      // Bengali: Friendly, natural-sounding voice
-        'ar-EG': "Kore",        // Arabic: Firm, clear voice
-        'fr-FR': "Charon",      // French: Informative, steady voice
-        'es-ES': "Zephyr",      // Spanish: Bright, energetic voice
-        'it-IT': "Leda",        // Italian: Youthful, smooth voice
-        'tr-TR': "Fenrir",      // Turkish: Distinct, excitable voice
-        'en-US': "Puck"         // English: Upbeat, clear voice
-    };
+    // Consolidated Language List (7 languages: English, Italian, French, Spanish, Arabic, Bengali, Turkish)
+    const LANGUAGES = [
+        { code: 'en-US', name: 'English', voice: 'Puck' },
+        { code: 'it-IT', name: 'Italian', voice: 'Aoede' }, 
+        { code: 'fr-FR', name: 'French', voice: 'Charon' },
+        { code: 'es-ES', name: 'Spanish', voice: 'Zephyr' },
+        { code: 'ar-EG', name: 'Arabic (Egypt)', voice: 'Kore' },
+        { code: 'bn-BD', name: 'Bengali', voice: 'Achird' },
+        { code: 'tr-TR', name: 'Turkish', voice: 'Fenrir' } // Turkish is back!
+    ];
 
-    // State variables for the selected language pair
-    let groupOneCode = 'en-US'; 
-    let groupOneName = 'English';
-    let groupTwoCode = 'fr-FR'; 
-    let groupTwoName = 'French';
-    
     // State variables for the current translation direction
-    let currentSourceCode = groupOneCode;
-    let currentTargetCode = groupTwoCode;
-    let currentSourceName = groupOneName;
-    let currentTargetName = groupTwoName;
-
+    let currentSourceCode = 'en-US';
+    let currentTargetCode = 'it-IT'; // Default target to Italian
+    
     // Speech Recognition and State
     let recognition = null;
     let isRecording = false;
 
-    // Helper function to get name from code
-    const getLanguageName = (code, selector) => {
-        const options = Array.from(selector.options);
-        const option = options.find(opt => opt.value === code);
-        return option ? option.getAttribute('data-name') : 'Unknown Language';
-    };
-
-    // --- 2. Core UI Update & State Management ---
+    // --- 2. Language Selector Initialization ---
     
-    const updateDirectionState = () => {
-        // Determine the source and target based on the current direction flag
-        const isGroupOneSource = (currentSourceCode === groupOneCode || currentSourceCode === groupOneName); 
+    const populateLanguageSelectors = () => {
+        // Function to create and append options to a select element
+        const createOptions = (selectElement) => {
+            selectElement.innerHTML = ''; // Clear existing options
+            LANGUAGES.forEach(lang => {
+                const option = document.createElement('option');
+                option.value = lang.code;
+                option.textContent = lang.name;
+                selectElement.appendChild(option);
+            });
+        };
+
+        createOptions(sourceLangSelect);
+        createOptions(targetLangSelect);
         
-        if (isGroupOneSource) {
-            currentSourceCode = groupOneCode;
-            currentSourceName = groupOneName;
-            currentTargetCode = groupTwoCode;
-            currentTargetName = groupTwoName;
-        } else {
-            currentSourceCode = groupTwoCode;
-            currentSourceName = groupTwoName;
-            currentTargetCode = groupOneCode;
-            currentTargetName = groupOneName;
-        }
+        // Set initial selections
+        sourceLangSelect.value = currentSourceCode;
+        targetLangSelect.value = currentTargetCode;
+
+        updateUI();
     };
+    
+    // Helper to get language details by code
+    const getLangByCode = (code) => LANGUAGES.find(lang => lang.code === code);
 
+    // --- 3. Core UI Update & State Management ---
+    
     const updateUI = () => {
-        // 1. Update the direction state based on the selected groups
-        updateDirectionState();
+        const sourceLang = getLangByCode(currentSourceCode);
+        const targetLang = getLangByCode(currentTargetCode);
 
-        // 2. Update Panel A (Source)
-        titleA.textContent = `${currentSourceName} (Source)`;
-        textA.placeholder = `Speak in ${currentSourceName}, or type, to translate...`;
-        micBtnA.setAttribute('aria-label', `Start Recording ${currentSourceName}`);
+        if (!sourceLang || !targetLang) return; 
 
-        // 3. Update Panel B (Target)
-        titleB.textContent = `${currentTargetName} (Target)`;
-        textB.placeholder = `The ${currentTargetName} translation will appear here...`;
-        speakBtnB.textContent = `Speak ${currentTargetName}`;
-        speakBtnB.setAttribute('aria-label', `Speak Translation in ${currentTargetName}`);
+        // 1. Update Panel A (Source)
+        titleA.textContent = `${sourceLang.name} (Source)`;
+        textA.placeholder = `Speak in ${sourceLang.name}, or type, to translate...`;
+        micBtnA.setAttribute('aria-label', `Start Recording ${sourceLang.name}`);
 
-        // 4. Set the recognition language dynamically
+        // 2. Update Panel B (Target)
+        titleB.textContent = `${targetLang.name} (Target)`;
+        textB.placeholder = `The ${targetLang.name} translation will appear here...`;
+        speakBtnB.textContent = `Speak ${targetLang.name}`;
+        speakBtnB.setAttribute('aria-label', `Speak Translation in ${targetLang.name}`);
+
+        // 3. Set the recognition language dynamically
         if (recognition) {
             recognition.lang = currentSourceCode; 
         }
 
-        // 5. Clear and disable controls initially
+        // 4. Clear and disable controls
         textA.value = '';
         textB.value = '';
         speakBtnB.disabled = true;
     };
     
-    const swapLanguages = () => {
-        // Swap the current direction (Group 1 Source <-> Group 2 Source)
-        const newSourceCode = currentTargetCode;
-        const newTargetCode = currentSourceCode;
-
+    const handleSourceChange = () => {
+        const newSourceCode = sourceLangSelect.value;
+        if (newSourceCode === currentTargetCode) {
+            // Swap if the user attempts to set Source == Target
+            targetLangSelect.value = currentSourceCode;
+            currentTargetCode = currentSourceCode;
+        }
         currentSourceCode = newSourceCode;
+        updateUI();
+    };
+
+    const handleTargetChange = () => {
+        const newTargetCode = targetLangSelect.value;
+        if (newTargetCode === currentSourceCode) {
+            // Swap if the user attempts to set Target == Source
+            sourceLangSelect.value = currentTargetCode;
+            currentSourceCode = currentTargetCode;
+        }
         currentTargetCode = newTargetCode;
-        
-        // Find names based on code in either selector
-        const allOptions = [...primaryLangSelect.options, ...secondaryLangSelect.options];
-        currentSourceName = allOptions.find(opt => opt.value === currentSourceCode).getAttribute('data-name');
-        currentTargetName = allOptions.find(opt => opt.value === currentTargetCode).getAttribute('data-name');
-        
-        // Update the UI to reflect the new direction
         updateUI();
     };
 
-    const handleLanguageChange = (isPrimary) => {
-        const selector = isPrimary ? primaryLangSelect : secondaryLangSelect;
-        const newCode = selector.value;
-        const newName = selector.options[selector.selectedIndex].getAttribute('data-name');
+    const swapLanguages = () => {
+        // Swap the selected values in the dropdowns
+        [sourceLangSelect.value, targetLangSelect.value] = [targetLangSelect.value, sourceLangSelect.value];
         
-        let oldCode = isPrimary ? groupOneCode : groupTwoCode;
-
-        // Update Group 1 or Group 2 selection
-        if (isPrimary) {
-            groupOneCode = newCode;
-            groupOneName = newName;
-        } else {
-            groupTwoCode = newCode;
-            groupTwoName = newName;
-        }
-        
-        // Logic to maintain the active source/target codes based on the change
-        if (currentSourceCode === oldCode) {
-            currentSourceCode = newCode;
-            currentSourceName = newName;
-        } else if (currentTargetCode === oldCode) {
-            currentTargetCode = newCode;
-            currentTargetName = newName;
-        } else {
-             // Reset direction to Group 1 -> Group 2 if something got out of sync
-             currentSourceCode = groupOneCode;
-             currentTargetCode = groupTwoCode;
-             currentSourceName = groupOneName;
-             currentTargetName = groupTwoName;
-        }
+        // Update the state
+        currentSourceCode = sourceLangSelect.value;
+        currentTargetCode = targetLangSelect.value;
 
         updateUI();
     };
 
 
-    // --- 3. Initialize Speech Recognition ---
+    // --- 4. Initialize Speech Recognition ---
     const initializeRecognition = () => {
         // Check for browser support
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -376,7 +348,7 @@
             
             if (transcript) {
                 // Call translation with current source/target codes
-                translateAndDisplay(transcript, currentSourceCode, currentTargetCode, currentTargetName);
+                translateAndDisplay(transcript);
             }
         };
 
@@ -401,16 +373,18 @@
         }, 500); 
     };
 
-    // --- 4. Translation Function (Uses Gemini API) ---
-    const translateAndDisplay = async (text, sourceCode, targetCode, targetName) => {
-        textB.placeholder = `Translating to ${targetName}...`;
-        
-        const srcName = currentSourceName;
-        const tgtName = currentTargetName;
+    // --- 5. Translation Function (Uses Gemini API) ---
+    const translateAndDisplay = async (text) => {
+        const sourceLang = getLangByCode(currentSourceCode);
+        const targetLang = getLangByCode(currentTargetCode);
+
+        if (!sourceLang || !targetLang) return; 
+
+        textB.placeholder = `Translating to ${targetLang.name}...`;
         
         // Construct the dynamic system prompt and user query
-        const systemPrompt = `You are a highly accurate, professional language translator. Your only job is to translate the provided text from ${srcName} into a grammatically correct, natural-sounding ${tgtName} translation. Respond with ONLY the translated ${tgtName} text, nothing else.`;
-        const userQuery = `Translate the following ${srcName} phrase to ${tgtName}: "${text}"`;
+        const systemPrompt = `You are a highly accurate, professional language translator. Your only job is to translate the provided text from ${sourceLang.name} into a grammatically correct, natural-sounding ${targetLang.name} translation. Respond with ONLY the translated ${targetLang.name} text, nothing else.`;
+        const userQuery = `Translate the following ${sourceLang.name} phrase to ${targetLang.name}: "${text}"`;
         
         // API Configuration
         const apiKey = "AIzaSyBEQukhkVCX_4xed29ByJYxszIDn8IPNgM"; 
@@ -454,7 +428,7 @@
         }
         
         textB.value = translatedText;
-        textB.placeholder = `The ${currentTargetName} translation will appear here...`;
+        textB.placeholder = `The ${targetLang.name} translation will appear here...`;
         
         // Check for success
         const translationSuccessful = !(translatedText.includes("Error") || translatedText.includes("unavailable"));
@@ -468,7 +442,7 @@
         }
     };
 
-    // --- 5. Text-to-Speech Utility Functions (for PCM to WAV conversion) ---
+    // --- 6. Text-to-Speech Utility Functions (for PCM to WAV conversion) ---
     
     // Convert base64 string to ArrayBuffer
     function base64ToArrayBuffer(base64) {
@@ -522,16 +496,17 @@
         return new Blob([buffer], { type: 'audio/wav' });
     }
 
-    // --- 6. Text-to-Speech (Speaking the Translation) ---
+    // --- 7. Text-to-Speech (Speaking the Translation) ---
     
     // Function to handle the actual speaking logic using the Gemini TTS API for ALL languages
     const speakWithGeminiTTS = async (text, targetCode) => {
-        if (!text || !VOICE_MAP[targetCode]) return;
+        const targetLang = getLangByCode(targetCode);
+        if (!text || !targetLang) return;
 
         ttsLoading.classList.remove('hidden');
         speakBtnB.disabled = true;
 
-        const voiceName = VOICE_MAP[targetCode];
+        const voiceName = targetLang.voice;
 
         const apiKey = "AIzaSyBEQukhkVCX_4xed29ByJYxszIDn8IPNgM"; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
@@ -612,7 +587,7 @@
     };
 
 
-    // --- 7. Event Listeners & Initialization ---
+    // --- 8. Event Listeners & Initialization ---
     
     // Voice Input Button (Always attached to Panel A)
     micBtnA.addEventListener('click', () => {
@@ -637,7 +612,7 @@
         if (text) {
             typingTimer = setTimeout(() => {
                 if (text.length > 3) { 
-                    translateAndDisplay(text, currentSourceCode, currentTargetCode, currentTargetName);
+                    translateAndDisplay(text);
                 }
             }, doneTypingInterval);
         } else {
@@ -656,15 +631,13 @@
     swapBtn.addEventListener('click', swapLanguages);
 
     // Language Selectors
-    primaryLangSelect.addEventListener('change', () => handleLanguageChange(true));
-    secondaryLangSelect.addEventListener('change', () => handleLanguageChange(false));
+    sourceLangSelect.addEventListener('change', handleSourceChange);
+    targetLangSelect.addEventListener('change', handleTargetChange);
 
 
     // Initial setup on page load
     window.onload = () => {
-        handleLanguageChange(true); 
-        handleLanguageChange(false); 
-        updateUI(); 
+        populateLanguageSelectors();
         initializeRecognition();
     };
 </script>
