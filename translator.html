@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Bidirectional Voice Translator (High-Quality Bengali TTS)</title>
+    <title>Universal Bidirectional Voice Translator (High-Quality TTS for All)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -96,7 +96,7 @@
 
 <div class="container-card">
     <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">Universal Voice Translator</h1>
-    <p class="text-center text-gray-500 mb-6">Choose two languages and swap the direction instantly. High-quality Bengali speech is enabled!</p>
+    <p class="text-center text-gray-500 mb-6">High-Quality pronunciation is now guaranteed for **all six languages** using a specialized TTS model.</p>
 
     <!-- Language Selectors (Primary and Secondary Groups) -->
     <div class="flex flex-col md:flex-row justify-center items-center mb-8 space-y-4 md:space-y-0 md:space-x-8">
@@ -210,12 +210,21 @@
     const secondaryLangSelect = document.getElementById('secondary-language-select');
     const swapBtn = document.getElementById('swap-btn');
 
-    const BENGALI_CODE = 'bn-BD';
+    // MAPPING: Use a specific, high-quality voice for each language code
+    const VOICE_MAP = {
+        'bn-BD': "Achird",      // Bengali: Friendly, natural-sounding voice
+        'ar-EG': "Kore",        // Arabic: Firm, clear voice
+        'fr-FR': "Charon",      // French: Informative, steady voice
+        'es-ES': "Zephyr",      // Spanish: Bright, energetic voice
+        'it-IT': "Leda",        // Italian: Youthful, smooth voice
+        'tr-TR': "Fenrir",      // Turkish: Distinct, excitable voice
+        'en-US': "Puck"         // English: Upbeat, clear voice
+    };
 
     // State variables for the selected language pair
-    let groupOneCode = 'en-US'; // Default to English
+    let groupOneCode = 'en-US'; 
     let groupOneName = 'English';
-    let groupTwoCode = 'fr-FR'; // Default to French
+    let groupTwoCode = 'fr-FR'; 
     let groupTwoName = 'French';
     
     // State variables for the current translation direction
@@ -271,7 +280,6 @@
 
         // 4. Set the recognition language dynamically
         if (recognition) {
-            // Note: Speech recognition support for Bengali may be limited depending on the browser/OS
             recognition.lang = currentSourceCode; 
         }
 
@@ -289,8 +297,10 @@
         currentSourceCode = newSourceCode;
         currentTargetCode = newTargetCode;
         
-        currentSourceName = getLanguageName(currentSourceCode, Array.from(primaryLangSelect.options).find(opt => opt.value === currentSourceCode) ? primaryLangSelect : secondaryLangSelect);
-        currentTargetName = getLanguageName(currentTargetCode, Array.from(secondaryLangSelect.options).find(opt => opt.value === currentTargetCode) ? secondaryLangSelect : primaryLangSelect);
+        // Find names based on code in either selector
+        const allOptions = [...primaryLangSelect.options, ...secondaryLangSelect.options];
+        currentSourceName = allOptions.find(opt => opt.value === currentSourceCode).getAttribute('data-name');
+        currentTargetName = allOptions.find(opt => opt.value === currentTargetCode).getAttribute('data-name');
         
         // Update the UI to reflect the new direction
         updateUI();
@@ -323,6 +333,8 @@
              // Reset direction to Group 1 -> Group 2 if something got out of sync
              currentSourceCode = groupOneCode;
              currentTargetCode = groupTwoCode;
+             currentSourceName = groupOneName;
+             currentTargetName = groupTwoName;
         }
 
         updateUI();
@@ -331,10 +343,11 @@
 
     // --- 3. Initialize Speech Recognition ---
     const initializeRecognition = () => {
+        // Check for browser support
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
         if (!SpeechRecognition) {
-            errorMessage.textContent = "Speech Recognition is not supported in this browser. Please use Chrome or Edge.";
+            errorMessage.textContent = "Speech Recognition is not supported in this browser. Please use Chrome or Edge for voice input.";
             errorMessage.classList.remove('hidden');
             micBtnA.disabled = true;
             return;
@@ -343,7 +356,7 @@
         recognition = new SpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = false;
-        recognition.lang = currentSourceCode; // Set initial language
+        recognition.lang = currentSourceCode; 
 
         recognition.onstart = () => {
             isRecording = true;
@@ -375,14 +388,14 @@
 
         recognition.onerror = (event) => {
             console.error('Speech Recognition Error:', event.error);
-            errorMessage.textContent = `Microphone Error: ${event.error}. Please allow microphone access.`;
+            errorMessage.textContent = `Microphone Error: ${event.error}. Please ensure microphone access is allowed.`;
             errorMessage.classList.remove('hidden');
             micBtnA.classList.remove('recording');
             statusA.classList.add('hidden');
             isRecording = false;
         };
         
-        // Wait until all initial setup is done before enabling mic
+        // Enable mic button after successful recognition initialization
         setTimeout(() => {
             micBtnA.disabled = false;
         }, 500); 
@@ -392,7 +405,6 @@
     const translateAndDisplay = async (text, sourceCode, targetCode, targetName) => {
         textB.placeholder = `Translating to ${targetName}...`;
         
-        // Determine the source/target names accurately for the prompt
         const srcName = currentSourceName;
         const tgtName = currentTargetName;
         
@@ -400,12 +412,12 @@
         const systemPrompt = `You are a highly accurate, professional language translator. Your only job is to translate the provided text from ${srcName} into a grammatically correct, natural-sounding ${tgtName} translation. Respond with ONLY the translated ${tgtName} text, nothing else.`;
         const userQuery = `Translate the following ${srcName} phrase to ${tgtName}: "${text}"`;
         
-        // API Configuration (Your key should already be here)
+        // API Configuration
         const apiKey = "AIzaSyBEQukhkVCX_4xed29ByJYxszIDn8IPNgM"; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
         if (!apiKey) {
-            textB.value = "ERROR: API Key is missing. Please edit the code to include your Gemini API Key.";
+            textB.value = "ERROR: API Key is missing. Please provide your Gemini API Key.";
             speakBtnB.disabled = true;
             console.error("API Key Missing.");
             return;
@@ -452,7 +464,7 @@
         
         // --- Speak automatically if successful ---
         if (translationSuccessful) {
-            speakTranslation(translatedText, currentTargetCode);
+            speakWithGeminiTTS(translatedText, currentTargetCode);
         }
     };
 
@@ -512,57 +524,23 @@
 
     // --- 6. Text-to-Speech (Speaking the Translation) ---
     
-    // Function to handle the actual speaking logic
-    const speakTranslation = async (text, targetCode) => {
-        if (!text) return;
+    // Function to handle the actual speaking logic using the Gemini TTS API for ALL languages
+    const speakWithGeminiTTS = async (text, targetCode) => {
+        if (!text || !VOICE_MAP[targetCode]) return;
 
-        // If the target is Bengali, use the high-quality Gemini TTS model
-        if (targetCode === BENGALI_CODE) {
-            await speakWithGeminiTTS(text);
-        } else {
-            // Otherwise, use the standard browser TTS for other languages
-            speakWithBrowserTTS(text, targetCode);
-        }
-    };
-    
-    // Browser TTS implementation (for non-Bengali languages)
-    const speakWithBrowserTTS = (text, targetCode) => {
-        if (!('speechSynthesis' in window)) {
-            errorMessage.textContent = "Text-to-Speech is not supported in this browser.";
-            errorMessage.classList.remove('hidden');
-            return;
-        }
-        
-        const utterance = new SpeechSynthesisUtterance(text);
-        
-        const voices = window.speechSynthesis.getVoices();
-        const targetVoice = voices.find(voice => voice.lang === targetCode || voice.lang.startsWith(targetCode.substring(0, 2)));
-        
-        if (targetVoice) {
-            utterance.voice = targetVoice;
-        } else {
-            utterance.lang = targetCode; 
-        }
-        
-        if (window.speechSynthesis.speaking) {
-            window.speechSynthesis.cancel();
-        }
-        
-        window.speechSynthesis.speak(utterance);
-    };
-
-    // Gemini TTS implementation (for high-quality Bengali)
-    const speakWithGeminiTTS = async (text) => {
         ttsLoading.classList.remove('hidden');
         speakBtnB.disabled = true;
+
+        const voiceName = VOICE_MAP[targetCode];
 
         const apiKey = "AIzaSyBEQukhkVCX_4xed29ByJYxszIDn8IPNgM"; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
 
         if (!apiKey) {
             ttsLoading.classList.add('hidden');
-            errorMessage.textContent = "TTS Error: API Key is missing for Bengali speech generation.";
+            errorMessage.textContent = "TTS Error: API Key is missing for high-quality speech generation.";
             errorMessage.classList.remove('hidden');
+            speakBtnB.disabled = false;
             return;
         }
 
@@ -572,10 +550,9 @@
             }],
             generationConfig: {
                 responseModalities: ["AUDIO"],
-                // Using a natural language hint for high-quality Bengali voice
                 speechConfig: {
                     voiceConfig: {
-                        prebuiltVoiceConfig: { voiceName: "Achird" } // Achird is a friendly-sounding voice
+                        prebuiltVoiceConfig: { voiceName: voiceName }
                     }
                 }
             },
@@ -625,9 +602,8 @@
 
         } catch (error) {
             console.error("Gemini TTS Request Failed:", error);
-            errorMessage.textContent = `High-Quality Speech Error: ${error.message}. Falling back to standard voice.`;
+            errorMessage.textContent = `Speech Error: ${error.message}. Please check API key/permissions.`;
             errorMessage.classList.remove('hidden');
-            speakWithBrowserTTS(text, BENGALI_CODE); // Fallback
 
         } finally {
             ttsLoading.classList.add('hidden');
@@ -672,8 +648,8 @@
     
     // Speak Button (Always attached to Panel B - now used for replay)
     speakBtnB.addEventListener('click', () => {
-         // Replay the current translation using the high-quality/standard function
-         speakTranslation(textB.value, currentTargetCode);
+         // Replay the current translation using the high-quality function
+         speakWithGeminiTTS(textB.value, currentTargetCode);
     });
     
     // Swap Button
@@ -690,15 +666,7 @@
         handleLanguageChange(false); 
         updateUI(); 
         initializeRecognition();
-
-        // Pre-load browser voices to prevent delay on first use (if needed)
-        if ('speechSynthesis' in window) {
-            if (window.speechSynthesis.getVoices().length === 0) {
-                 window.speechSynthesis.onvoiceschanged = initializeRecognition;
-            }
-        }
     };
 </script>
 </body>
 </html>
-
