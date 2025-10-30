@@ -214,7 +214,8 @@
 
         recognition.onerror = (event) => {
             console.error('Speech Recognition Error:', event.error);
-            errorMessage.textContent = `Error: ${event.error}. Please check your microphone permissions.`;
+            // This error is usually permission-related, not API-related
+            errorMessage.textContent = `Microphone Error: ${event.error}. Please ensure microphone access is allowed.`;
             errorMessage.classList.remove('hidden');
             micBtn.classList.remove('recording');
             listeningStatus.classList.add('hidden');
@@ -225,7 +226,7 @@
         micBtn.disabled = false;
     };
 
-    // --- 3. Translation Function (Uses Gemini API for simulation) ---
+    // --- 3. Translation Function (Uses Gemini API) ---
     const translateAndDisplay = async (text) => {
         const langName = langSelect.options[langSelect.selectedIndex].getAttribute('data-name');
         translatedTextarea.placeholder = `Translating to ${langName}...`;
@@ -238,8 +239,18 @@
         const userQuery = `Translate the following English phrase to ${langName}: "${text}"`;
         
         // API Configuration
-        const apiKey = ""; 
+        // >>> IMPORTANT: PASTE YOUR GEMINI API KEY HERE TO MAKE THE TRANSLATION WORK ON GITHUB PAGES <<<
+        const apiKey = "AIzaSyBEQukhkVCX_4xed29ByJYxszIDn8IPNgM"; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+        // Check if API key is missing before making the call
+        if (!apiKey) {
+            const errorMsg = "Could not reach translation service. ERROR: API Key is missing. Please edit the code to include your Gemini API Key.";
+            translatedTextarea.value = errorMsg;
+            speakBtn.disabled = true;
+            console.error(errorMsg);
+            return;
+        }
 
         const payload = {
             contents: [{ parts: [{ text: userQuery }] }],
@@ -258,7 +269,11 @@
                 body: JSON.stringify(payload)
             });
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("API Response Error:", errorData);
+                throw new Error(`HTTP error! Status: ${response.status}. Message: ${errorData.error?.message || 'Unknown API Error'}`);
+            }
             
             const result = await response.json();
             const candidate = result.candidates?.[0];
@@ -267,14 +282,14 @@
                 translatedText = candidate.content.parts[0].text.trim(); 
             }
         } catch (error) {
-            console.error("Translation API Error:", error);
-            translatedText = "Could not reach translation service.";
+            console.error("Translation API Request Failed:", error.message);
+            translatedText = `Could not reach translation service. Check API Key and internet connection. Detail: ${error.message}`;
         }
         
         translatedTextarea.value = translatedText;
         translatedTextarea.placeholder = `The ${langName} translation will appear here...`;
         
-        // Enable speech button once translation is complete
+        // Enable speech button only if translation appears successful
         speakBtn.disabled = translatedText.includes("failed") || translatedText.includes("Could not reach");
     };
 
@@ -283,7 +298,8 @@
         const textToSpeak = translatedTextarea.value;
 
         if (!textToSpeak) {
-            alert('Please translate text first.');
+            // Note: Using console.log instead of alert per instructions
+            console.log('Text-to-Speech: No text to speak.'); 
             return;
         }
 
