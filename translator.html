@@ -88,6 +88,8 @@
                 <option value="fr-FR" data-name="French">French</option>
                 <option value="es-ES" data-name="Spanish">Spanish</option>
                 <option value="it-IT" data-name="Italian">Italian</option>
+                <option value="tr-TR" data-name="Turkish">Turkish</option>
+                <option value="ar-EG" data-name="Arabic">Arabic (Egypt)</option>
             </select>
         </div>
     </div>
@@ -193,7 +195,7 @@
 
         // Update Panel B (Target)
         titleB.textContent = `${currentTargetName} (Target)`;
-        textB.placeholder = `The translation will appear here...`;
+        textB.placeholder = `The ${currentTargetName} translation will appear here...`;
         speakBtnB.textContent = `Speak ${currentTargetName}`;
         speakBtnB.setAttribute('aria-label', `Speak Translation in ${currentTargetName}`);
 
@@ -352,11 +354,10 @@
         // Enable speech button only if translation appears successful (for manual replay)
         speakBtnB.disabled = !translationSuccessful;
         
-        // --- NEW: Speak automatically if successful ---
+        // --- Speak automatically if successful ---
         if (translationSuccessful) {
             speakTranslation();
         }
-        // ---------------------------------------------
     };
 
     // --- 5. Text-to-Speech (Speaking the Translation) ---
