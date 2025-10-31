@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unified Bidirectional Voice Translator (iOS Resilient Audio)</title>
+    <title>Unified Bidirectional Voice Translator (Cross-Platform Resilient)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -144,7 +144,7 @@
 <body>
 
 <div class="container-card">
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language Voice Translator (iOS Resilient Audio)</h1>
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language Voice Translator (Cross-Platform Resilient)</h1>
     <p class="text-center text-gray-500 mb-6">Translation will auto-speak after your first successful microphone use.</p>
 
     <!-- Language Selectors (Source and Target) -->
@@ -283,12 +283,13 @@
     let currentTargetCode = 'it-IT'; 
     let useApiTts = false; 
 
-    // --- FLAG FOR IOS AUTO-PLAY FIX ---
+    // --- FLAG FOR AUTO-PLAY FIX: Tracks if the user has triggered audio once ---
     let hasUserInteracted = false; 
 
-    // Speech Recognition and State
+    // Speech Recognition and State (recognition is now ephemeral, only exists during recording)
     let recognition = null;
     let isRecording = false;
+    let isMicSupported = false;
     
     // --- 2. Language Selector Initialization ---
     
@@ -339,12 +340,7 @@
         speakBtnB.textContent = `Speak ${targetLang.name}`;
         speakBtnB.setAttribute('aria-label', `Speak Translation in ${targetLang.name}`);
 
-        // 3. Set the recognition language dynamically
-        if (recognition) {
-            recognition.lang = currentSourceCode; 
-        }
-
-        // 4. Clear and disable controls
+        // 3. Clear and disable controls
         textA.value = '';
         textB.value = '';
         speakBtnB.disabled = true;
@@ -389,18 +385,37 @@
     };
 
 
-    // --- 4. Initialize Speech Recognition ---
-    const initializeRecognition = () => {
+    // --- 4. Speech Recognition Lifecycle (Robust Cross-Platform Fix: New instance per use) ---
+
+    const checkMicSupport = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
         if (!SpeechRecognition) {
-            errorMessage.textContent = "Speech Recognition is not supported in this browser. Please use Chrome or Edge for voice input.";
+            errorMessage.textContent = "Speech Recognition is not supported in this browser. Please use Chrome, Edge, or Safari.";
             errorMessage.classList.remove('hidden');
             micBtnA.disabled = true;
-            return;
+            isMicSupported = false;
+        } else {
+            micBtnA.disabled = false;
+            isMicSupported = true;
+        }
+    }
+    
+    const startRecording = () => {
+        if (!isMicSupported) return;
+
+        // --- CROSS-PLATFORM FIX: Teardown and create NEW instance to prevent 'service-not-allowed' ---
+        if (recognition) {
+            // Forcefully abort any lingering recognition process
+            recognition.onend = null; 
+            recognition.onerror = null;
+            recognition.abort(); 
+            recognition = null;
         }
 
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognition = new SpeechRecognition();
+        
         recognition.continuous = false;
         recognition.interimResults = false;
         recognition.lang = currentSourceCode; 
@@ -408,10 +423,15 @@
         recognition.onstart = () => {
             isRecording = true;
             micBtnA.classList.add('recording');
-            statusA.classList.remove('hidden');
+            statusA.textContent = '... Listening, Tap to Stop';
+            statusA.classList.remove('hidden', 'text-red-500');
+            statusA.classList.add('text-cyan-500');
+            
+            // Clear previous results before starting
             textA.value = '';
             textB.value = '';
             speakBtnB.disabled = true;
+            errorMessage.classList.add('hidden'); // Clear error message
         };
 
         recognition.onresult = (event) => {
@@ -432,22 +452,37 @@
             isRecording = false;
             micBtnA.classList.remove('recording');
             statusA.classList.add('hidden');
+            // Resource is now fully released.
         };
 
         recognition.onerror = (event) => {
             console.error('Speech Recognition Error:', event.error);
             errorMessage.textContent = `Microphone Error: ${event.error}. Please ensure microphone access is allowed.`;
             errorMessage.classList.remove('hidden');
+            statusA.textContent = '... Error';
+            statusA.classList.add('text-red-500');
+            statusA.classList.remove('text-cyan-500');
+
             micBtnA.classList.remove('recording');
-            statusA.classList.add('hidden');
             isRecording = false;
         };
         
-        // Enable mic button after successful recognition initialization
-        setTimeout(() => {
-            micBtnA.disabled = false;
-        }, 500); 
+        // Final action: Start the new instance
+        recognition.start();
     };
+
+    const toggleRecording = () => {
+        if (!isMicSupported) return;
+        
+        if (isRecording) {
+            // Stop logic: let onend handle the cleanup
+            recognition.stop();
+        } else {
+            // Start logic: handles instantiation inside
+            startRecording();
+        }
+    };
+
 
     // --- 5. Translation Function (Uses Gemini API for translation) ---
     const translateAndDisplay = async (text) => {
@@ -469,7 +504,7 @@
 
         if (!apiKey) {
             textB.value = "ERROR: API Key is missing. Translation will not work.";
-            speakBtnB.disabled = true;
+            speakBtnB.disabled = false;
             return;
         }
 
@@ -508,64 +543,16 @@
         
         const translationSuccessful = !(translatedText.includes("Error") || translatedText.includes("unavailable"));
 
-        // Enable speech button only if translation appears successful
+        // Always enable speech button if translation appears successful
         speakBtnB.disabled = !translationSuccessful;
         
-        // --- Speak automatically ONLY IF the user has already interacted ---
+        // --- Speak automatically ONLY IF the user has already interacted (iOS/Android Auto-play fix) ---
         if (translationSuccessful && hasUserInteracted) {
-            speakTranslation(translatedText, currentTargetCode, true); // Added 'isAuto' flag
+            speakTranslation(translatedText, currentTargetCode, true); 
         }
     };
 
     // --- 6. Text-to-Speech Utility Functions (Selective TTS) ---
-    
-    // --- 6A. Browser TTS Function ---
-    const speakWithBrowserTTS = (text, targetCode) => {
-        if (!('speechSynthesis' in window)) {
-            errorMessage.textContent = "Browser TTS (Speech Synthesis) is not supported.";
-            errorMessage.classList.remove('hidden');
-            return;
-        }
-
-        window.speechSynthesis.cancel();
-        
-        const utterance = new SpeechSynthesisUtterance(text);
-        
-        const langCodePrefix = targetCode.substring(0, 2);
-        const voice = browserVoices.find(v => v.lang.startsWith(langCodePrefix) && v.localService); 
-        
-        if (voice) {
-            utterance.voice = voice;
-        } else {
-            utterance.lang = targetCode; 
-        }
-        
-        utterance.pitch = 1.0;
-        utterance.rate = 1.0; 
-
-        // Temporarily disable while speaking
-        speakBtnB.disabled = true;
-        
-        // Timeout fallback to prevent button lock on iOS
-        let timeoutId = setTimeout(() => {
-            console.warn("TTS Timeout: Forcing speak button re-enablement due to potential iOS hang.");
-            speakBtnB.disabled = false;
-        }, 5000); 
-
-        utterance.onend = () => {
-            speakBtnB.disabled = false;
-            clearTimeout(timeoutId); 
-        };
-        utterance.onerror = (e) => {
-            console.warn("Browser TTS Error - could not synthesize speech:", e);
-            speakBtnB.disabled = false;
-            clearTimeout(timeoutId); 
-        };
-        
-        window.speechSynthesis.speak(utterance);
-    };
-
-    // --- 6B. Gemini API TTS Function (High-Quality) ---
     
     // Convert base64 string to ArrayBuffer
     function base64ToArrayBuffer(base64) {
@@ -617,8 +604,55 @@
 
         return new Blob([buffer], { type: 'audio/wav' });
     }
+    
+    // --- 6A. Browser TTS Function ---
+    const speakWithBrowserTTS = (text, targetCode) => {
+        if (!('speechSynthesis' in window)) {
+            errorMessage.textContent = "Browser TTS (Speech Synthesis) is not supported.";
+            errorMessage.classList.remove('hidden');
+            speakBtnB.disabled = false;
+            return;
+        }
 
-    // Function to handle the actual speaking logic using the Gemini TTS API
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        const langCodePrefix = targetCode.substring(0, 2);
+        const voice = browserVoices.find(v => v.lang.startsWith(langCodePrefix) && v.localService); 
+        
+        if (voice) {
+            utterance.voice = voice;
+        } else {
+            utterance.lang = targetCode; 
+        }
+        
+        utterance.pitch = 1.0;
+        utterance.rate = 1.0; 
+
+        // Temporarily disable while speaking
+        speakBtnB.disabled = true;
+        
+        // Timeout fallback to prevent button lock on iOS/Android
+        let timeoutId = setTimeout(() => {
+            console.warn("TTS Timeout: Forcing speak button re-enablement.");
+            speakBtnB.disabled = false;
+        }, 5000); 
+
+        utterance.onend = () => {
+            speakBtnB.disabled = false;
+            clearTimeout(timeoutId); 
+        };
+        utterance.onerror = (e) => {
+            console.warn("Browser TTS Error - could not synthesize speech:", e);
+            speakBtnB.disabled = false;
+            clearTimeout(timeoutId); 
+        };
+        
+        window.speechSynthesis.speak(utterance);
+    };
+
+    // --- 6B. Gemini API TTS Function (High-Quality) ---
     const speakWithGeminiTTSApi = async (text, targetCode) => {
         const targetLang = getLangByCode(targetCode);
         if (!text || !targetLang) return;
@@ -635,7 +669,7 @@
             ttsLoading.classList.add('hidden');
             errorMessage.textContent = "TTS API Error: Key is missing. High-quality speech will not work.";
             errorMessage.classList.remove('hidden');
-            speakBtnB.disabled = false; // Important: Re-enable immediately on API Key error
+            speakBtnB.disabled = false; 
             return;
         }
 
@@ -684,6 +718,7 @@
                 const wavBlob = pcmToWav(pcm16, sampleRate);
                 const audioUrl = URL.createObjectURL(wavBlob);
                 
+                // Create audio element right before playing (best practice for iOS context)
                 const audio = new Audio(audioUrl);
                 
                 // --- Start Playing & Manage Button State ---
@@ -715,9 +750,8 @@
 
         } finally {
             ttsLoading.classList.add('hidden');
-            // If the audio didn't start playing (and therefore didn't trigger disabled=true), 
-            // ensure the button is unlocked here.
-            if (!speakBtnB.disabled) { 
+            // Final check to ensure button is not permanently disabled
+            if (textB.value && speakBtnB.disabled) { 
                  speakBtnB.disabled = false;
             }
         }
@@ -725,10 +759,10 @@
     
     // --- 6C. Main Speech Dispatcher ---
     const speakTranslation = (text, targetCode, isAuto = false) => {
-        ttsLoading.classList.add('hidden'); 
+        // Prevent action if there is no text to speak
+        if (!text) return;
         
-        // Manual clicks (isAuto=false) or successful translation from a prior mic interaction (isAuto=true)
-        // should all proceed. We set disabled=true inside the specific TTS functions.
+        ttsLoading.classList.add('hidden'); 
         
         if (useApiTts) {
             speakWithGeminiTTSApi(text, targetCode); 
@@ -739,19 +773,8 @@
 
     // --- 7. Event Listeners & Initialization ---
     
-    // Voice Input Button (Always attached to Panel A)
-    micBtnA.addEventListener('click', () => {
-        if (isRecording) {
-            recognition.stop();
-        } else {
-            // Set user interaction flag immediately on mic click
-            hasUserInteracted = true; 
-            if(recognition) {
-                 recognition.lang = currentSourceCode;
-            }
-            recognition.start();
-        }
-    });
+    // Voice Input Button (Now uses the new toggleRecording logic)
+    micBtnA.addEventListener('click', toggleRecording);
     
     // Text Input Detection (Allows translation when user types instead of speaking)
     let typingTimer;
@@ -763,7 +786,8 @@
         if (text) {
             typingTimer = setTimeout(() => {
                 if (text.length > 3) { 
-                    // Manual typing still triggers translation
+                    // Manual typing also counts as user interaction for auto-speak
+                    hasUserInteracted = true;
                     translateAndDisplay(text);
                 }
             }, doneTypingInterval);
@@ -775,8 +799,8 @@
     
     // Speak Button (Always attached to Panel B - now used for replay)
     speakBtnB.addEventListener('click', () => {
-         // Re-running the speaking function (this also counts as a valid user gesture)
-         // We do NOT pass the isAuto flag here, as this is always a manual action.
+         // Manual interaction triggers the audio context and sets the user interaction flag
+         hasUserInteracted = true; 
          speakTranslation(textB.value, currentTargetCode);
     });
     
@@ -805,7 +829,7 @@
     // Initial setup on page load
     window.onload = () => {
         populateLanguageSelectors();
-        initializeRecognition();
+        checkMicSupport(); // Only check for support once
     };
 </script>
 </body>
