@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unified Bidirectional Voice Translator (Cross-Platform Resilient)</title>
+    <title>Unified Bidirectional Voice Translator (Android Error Resilient)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -144,8 +144,8 @@
 <body>
 
 <div class="container-card">
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language Voice Translator (Cross-Platform Resilient)</h1>
-    <p class="text-center text-gray-500 mb-6">Translation will auto-speak after your first successful microphone use.</p>
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language Voice Translator (Android Error Resilient)</h1>
+    <p class="text-center text-gray-500 mb-6">Translation will auto-speak after your first successful microphone use. Session will stop automatically after 7 seconds.</p>
 
     <!-- Language Selectors (Source and Target) -->
     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -291,6 +291,9 @@
     let isRecording = false;
     let isMicSupported = false;
     
+    // --- Timeout ID for forced stop ---
+    let recognitionTimeoutId = null; 
+    
     // --- 2. Language Selector Initialization ---
     
     const populateLanguageSelectors = () => {
@@ -383,9 +386,20 @@
         useApiTts = ttsApiToggle.checked;
         console.log(`TTS Mode: ${useApiTts ? 'API' : 'Browser'}`);
     };
+    
+    // --- Centralized cleanup function for recognition events ---
+    const cleanupRecognition = () => {
+        if (recognitionTimeoutId) {
+            clearTimeout(recognitionTimeoutId);
+            recognitionTimeoutId = null;
+        }
+        isRecording = false;
+        micBtnA.classList.remove('recording');
+        statusA.classList.add('hidden');
+    };
 
 
-    // --- 4. Speech Recognition Lifecycle (Robust Cross-Platform Fix: New instance per use) ---
+    // --- 4. Speech Recognition Lifecycle (Robust Cross-Platform Fix: New instance per use + Timeout) ---
 
     const checkMicSupport = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -404,7 +418,7 @@
     const startRecording = () => {
         if (!isMicSupported) return;
 
-        // --- CROSS-PLATFORM FIX: Teardown and create NEW instance to prevent 'service-not-allowed' ---
+        // CRITICAL FIX: Teardown and create NEW instance to prevent 'service-not-allowed'
         if (recognition) {
             // Forcefully abort any lingering recognition process
             recognition.onend = null; 
@@ -412,18 +426,19 @@
             recognition.abort(); 
             recognition = null;
         }
+        cleanupRecognition(); // Ensure timeout is cleared from previous run
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognition = new SpeechRecognition();
         
-        recognition.continuous = false;
+        recognition.continuous = false; // Stop after a single, continuous utterance
         recognition.interimResults = false;
         recognition.lang = currentSourceCode; 
 
         recognition.onstart = () => {
             isRecording = true;
             micBtnA.classList.add('recording');
-            statusA.textContent = '... Listening, Tap to Stop';
+            statusA.textContent = '... Listening, Tap to Stop (7s limit)';
             statusA.classList.remove('hidden', 'text-red-500');
             statusA.classList.add('text-cyan-500');
             
@@ -432,9 +447,22 @@
             textB.value = '';
             speakBtnB.disabled = true;
             errorMessage.classList.add('hidden'); // Clear error message
+            
+            // --- Implement a hard stop timeout (7000ms) ---
+            recognitionTimeoutId = setTimeout(() => {
+                if (isRecording) {
+                    console.warn("Forcing recognition stop due to 7-second timeout.");
+                    if (recognition) {
+                         recognition.stop();
+                    }
+                }
+            }, 7000); // 7 seconds should be enough for a phrase
         };
 
         recognition.onresult = (event) => {
+            // Result received, clear timeout and let onend handle cleanup
+            clearTimeout(recognitionTimeoutId); 
+            
             const transcript = Array.from(event.results)
                 .map(result => result[0].transcript)
                 .join('');
@@ -449,22 +477,32 @@
         };
 
         recognition.onend = () => {
-            isRecording = false;
-            micBtnA.classList.remove('recording');
-            statusA.classList.add('hidden');
-            // Resource is now fully released.
+            // Final cleanup after the recognition session ends (either manually, by silence, or by timeout)
+            cleanupRecognition(); 
         };
 
         recognition.onerror = (event) => {
             console.error('Speech Recognition Error:', event.error);
-            errorMessage.textContent = `Microphone Error: ${event.error}. Please ensure microphone access is allowed.`;
+            
+            // --- ANDROID FIX: Provide specific feedback for 'no-speech' which causes the 'stuck' feeling ---
+            if (event.error === 'no-speech') {
+                errorMessage.textContent = `No speech detected. Please try again and speak clearly into the microphone.`;
+            } else {
+                errorMessage.textContent = `Microphone Error: ${event.error}. Please ensure microphone access is allowed.`;
+            }
+            
             errorMessage.classList.remove('hidden');
             statusA.textContent = '... Error';
             statusA.classList.add('text-red-500');
             statusA.classList.remove('text-cyan-500');
 
-            micBtnA.classList.remove('recording');
-            isRecording = false;
+            cleanupRecognition(); // Ensure cleanup on error
+            
+            // Critical: Abort the recognition object to force resource release
+            if (recognition) {
+                recognition.abort();
+                recognition = null;
+            }
         };
         
         // Final action: Start the new instance
@@ -475,8 +513,10 @@
         if (!isMicSupported) return;
         
         if (isRecording) {
-            // Stop logic: let onend handle the cleanup
-            recognition.stop();
+            // Manual stop logic: let onend handle the cleanup
+            if (recognition) {
+                recognition.stop();
+            }
         } else {
             // Start logic: handles instantiation inside
             startRecording();
@@ -546,7 +586,7 @@
         // Always enable speech button if translation appears successful
         speakBtnB.disabled = !translationSuccessful;
         
-        // --- Speak automatically ONLY IF the user has already interacted (iOS/Android Auto-play fix) ---
+        // --- Speak automatically ONLY IF the user has already interacted (Auto-play fix) ---
         if (translationSuccessful && hasUserInteracted) {
             speakTranslation(translatedText, currentTargetCode, true); 
         }
