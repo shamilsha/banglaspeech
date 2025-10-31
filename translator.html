@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unified Bidirectional Voice Translator (iOS Fixes)</title>
+    <title>Unified Bidirectional Voice Translator (iOS Resilient Audio)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -144,7 +144,7 @@
 <body>
 
 <div class="container-card">
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language Voice Translator (iOS Optimized)</h1>
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language Voice Translator (iOS Resilient Audio)</h1>
     <p class="text-center text-gray-500 mb-6">Translation will auto-speak after your first successful microphone use.</p>
 
     <!-- Language Selectors (Source and Target) -->
@@ -283,7 +283,7 @@
     let currentTargetCode = 'it-IT'; 
     let useApiTts = false; 
 
-    // --- NEW FLAG FOR IOS AUTO-PLAY FIX ---
+    // --- FLAG FOR IOS AUTO-PLAY FIX ---
     let hasUserInteracted = false; 
 
     // Speech Recognition and State
@@ -457,7 +457,7 @@
         if (!sourceLang || !targetLang) return; 
 
         textB.placeholder = `Translating to ${targetLang.name}...`;
-        speakBtnB.disabled = true;
+        speakBtnB.disabled = true; // Disable while translating
         
         // Construct the dynamic system prompt and user query
         const systemPrompt = `You are a highly accurate, professional language translator. Your only job is to translate the provided text from ${sourceLang.name} into a grammatically correct, natural-sounding ${targetLang.name} translation. Respond with ONLY the translated ${targetLang.name} text, nothing else.`;
@@ -469,6 +469,7 @@
 
         if (!apiKey) {
             textB.value = "ERROR: API Key is missing. Translation will not work.";
+            speakBtnB.disabled = true;
             return;
         }
 
@@ -512,7 +513,7 @@
         
         // --- Speak automatically ONLY IF the user has already interacted ---
         if (translationSuccessful && hasUserInteracted) {
-            speakTranslation(translatedText, currentTargetCode);
+            speakTranslation(translatedText, currentTargetCode, true); // Added 'isAuto' flag
         }
     };
 
@@ -542,13 +543,23 @@
         utterance.pitch = 1.0;
         utterance.rate = 1.0; 
 
+        // Temporarily disable while speaking
         speakBtnB.disabled = true;
+        
+        // Timeout fallback to prevent button lock on iOS
+        let timeoutId = setTimeout(() => {
+            console.warn("TTS Timeout: Forcing speak button re-enablement due to potential iOS hang.");
+            speakBtnB.disabled = false;
+        }, 5000); 
+
         utterance.onend = () => {
             speakBtnB.disabled = false;
+            clearTimeout(timeoutId); 
         };
         utterance.onerror = (e) => {
             console.warn("Browser TTS Error - could not synthesize speech:", e);
             speakBtnB.disabled = false;
+            clearTimeout(timeoutId); 
         };
         
         window.speechSynthesis.speak(utterance);
@@ -624,7 +635,7 @@
             ttsLoading.classList.add('hidden');
             errorMessage.textContent = "TTS API Error: Key is missing. High-quality speech will not work.";
             errorMessage.classList.remove('hidden');
-            speakBtnB.disabled = false;
+            speakBtnB.disabled = false; // Important: Re-enable immediately on API Key error
             return;
         }
 
@@ -674,11 +685,23 @@
                 const audioUrl = URL.createObjectURL(wavBlob);
                 
                 const audio = new Audio(audioUrl);
-                audio.play();
+                
+                // --- Start Playing & Manage Button State ---
+                audio.play().catch(e => {
+                    // CRITICAL: Catch play failure (e.g., user gesture block) and re-enable button
+                    console.error("Audio play failed (gesture block?):", e);
+                    speakBtnB.disabled = false; 
+                });
+                
                 audio.onended = () => {
                     URL.revokeObjectURL(audioUrl); 
-                    speakBtnB.disabled = false;
+                    speakBtnB.disabled = false; // Re-enable on successful end
                 };
+                audio.onerror = (e) => {
+                    console.error("Audio playback error:", e);
+                    URL.revokeObjectURL(audioUrl); 
+                    speakBtnB.disabled = false; // Re-enable on error
+                }
 
             } else {
                 throw new Error("Invalid or missing audio data in response.");
@@ -688,17 +711,24 @@
             console.error("Gemini TTS Request Failed:", error);
             errorMessage.textContent = `High-Quality Speech Error: ${error.message}. Check API key and quota.`;
             errorMessage.classList.remove('hidden');
+            speakBtnB.disabled = false; // Important: Re-enable immediately on Fetch/Processing error
 
         } finally {
             ttsLoading.classList.add('hidden');
-            // If the user hasn't cancelled the toggle state, keep it enabled
-            if (textB.value) speakBtnB.disabled = false; 
+            // If the audio didn't start playing (and therefore didn't trigger disabled=true), 
+            // ensure the button is unlocked here.
+            if (!speakBtnB.disabled) { 
+                 speakBtnB.disabled = false;
+            }
         }
     };
     
     // --- 6C. Main Speech Dispatcher ---
-    const speakTranslation = (text, targetCode) => {
+    const speakTranslation = (text, targetCode, isAuto = false) => {
         ttsLoading.classList.add('hidden'); 
+        
+        // Manual clicks (isAuto=false) or successful translation from a prior mic interaction (isAuto=true)
+        // should all proceed. We set disabled=true inside the specific TTS functions.
         
         if (useApiTts) {
             speakWithGeminiTTSApi(text, targetCode); 
@@ -733,8 +763,7 @@
         if (text) {
             typingTimer = setTimeout(() => {
                 if (text.length > 3) { 
-                    // Manual typing is considered a user interaction, but we don't 
-                    // want it to auto-speak until the MIC has been used once.
+                    // Manual typing still triggers translation
                     translateAndDisplay(text);
                 }
             }, doneTypingInterval);
@@ -747,6 +776,7 @@
     // Speak Button (Always attached to Panel B - now used for replay)
     speakBtnB.addEventListener('click', () => {
          // Re-running the speaking function (this also counts as a valid user gesture)
+         // We do NOT pass the isAuto flag here, as this is always a manual action.
          speakTranslation(textB.value, currentTargetCode);
     });
     
