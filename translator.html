@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unified Bidirectional Voice Translator (7 Languages, Selectable TTS API)</title>
+    <title>Unified Bidirectional Voice Translator (iOS Fixes)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -144,8 +144,8 @@
 <body>
 
 <div class="container-card">
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language Voice Translator</h1>
-    <p class="text-center text-gray-500 mb-6">Use the toggle below to switch to the high-quality API for improved pronunciation.</p>
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language Voice Translator (iOS Optimized)</h1>
+    <p class="text-center text-gray-500 mb-6">Translation will auto-speak after your first successful microphone use.</p>
 
     <!-- Language Selectors (Source and Target) -->
     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -262,11 +262,10 @@
     const sourceLangSelect = document.getElementById('source-language-select');
     const targetLangSelect = document.getElementById('target-language-select');
     const swapBtn = document.getElementById('swap-btn');
-    const ttsApiToggle = document.getElementById('tts-api-toggle'); // New Toggle
+    const ttsApiToggle = document.getElementById('tts-api-toggle'); 
 
     // Consolidated Language List (7 languages)
     const LANGUAGES = [
-        // Voice names are for the Gemini TTS API
         { code: 'en-US', name: 'English', voice: 'Puck' },
         { code: 'it-IT', name: 'Italian', voice: 'Aoede' }, 
         { code: 'fr-FR', name: 'French', voice: 'Charon' },
@@ -276,13 +275,16 @@
         { code: 'tr-TR', name: 'Turkish', voice: 'Fenrir' }
     ];
     
-    // Voices cache for browser TTS (must be loaded asynchronously)
+    // Voices cache for browser TTS
     let browserVoices = [];
     
     // State variables
     let currentSourceCode = 'en-US';
-    let currentTargetCode = 'it-IT'; // Default target to Italian
-    let useApiTts = false; // Initial state: use browser TTS
+    let currentTargetCode = 'it-IT'; 
+    let useApiTts = false; 
+
+    // --- NEW FLAG FOR IOS AUTO-PLAY FIX ---
+    let hasUserInteracted = false; 
 
     // Speech Recognition and State
     let recognition = null;
@@ -291,7 +293,6 @@
     // --- 2. Language Selector Initialization ---
     
     const populateLanguageSelectors = () => {
-        // Now populating BOTH selectors with ALL 7 languages (User Request 1)
         sourceLangSelect.innerHTML = '';
         targetLangSelect.innerHTML = ''; 
         
@@ -352,7 +353,6 @@
     const handleSourceChange = () => {
         const newSourceCode = sourceLangSelect.value;
         if (newSourceCode === currentTargetCode) {
-            // Swap if the user attempts to set Source == Target
             targetLangSelect.value = currentSourceCode;
             currentTargetCode = currentSourceCode;
         }
@@ -363,7 +363,6 @@
     const handleTargetChange = () => {
         const newTargetCode = targetLangSelect.value;
         if (newTargetCode === currentSourceCode) {
-             // Swap if the user attempts to set Target == Source
             sourceLangSelect.value = currentTargetCode;
             currentSourceCode = currentTargetCode;
         }
@@ -423,6 +422,8 @@
             textA.value = transcript;
             
             if (transcript) {
+                // Set the flag here as a result was received from a user interaction
+                hasUserInteracted = true; 
                 translateAndDisplay(transcript);
             }
         };
@@ -509,8 +510,8 @@
         // Enable speech button only if translation appears successful
         speakBtnB.disabled = !translationSuccessful;
         
-        // --- Speak automatically if successful ---
-        if (translationSuccessful) {
+        // --- Speak automatically ONLY IF the user has already interacted ---
+        if (translationSuccessful && hasUserInteracted) {
             speakTranslation(translatedText, currentTargetCode);
         }
     };
@@ -525,20 +526,16 @@
             return;
         }
 
-        // Stop any currently speaking utterance
         window.speechSynthesis.cancel();
         
         const utterance = new SpeechSynthesisUtterance(text);
         
-        // Attempt to find a suitable voice based on language code prefix
         const langCodePrefix = targetCode.substring(0, 2);
-        // Prefer a local voice that matches the prefix
         const voice = browserVoices.find(v => v.lang.startsWith(langCodePrefix) && v.localService); 
         
         if (voice) {
             utterance.voice = voice;
         } else {
-             // Fallback to setting just the language code
             utterance.lang = targetCode; 
         }
         
@@ -701,13 +698,11 @@
     
     // --- 6C. Main Speech Dispatcher ---
     const speakTranslation = (text, targetCode) => {
-        ttsLoading.classList.add('hidden'); // Ensure API loading indicator is off by default
+        ttsLoading.classList.add('hidden'); 
         
-        // Use API if the toggle is ON (User Request 2)
         if (useApiTts) {
             speakWithGeminiTTSApi(text, targetCode); 
         } else {
-            // Otherwise, use Browser TTS (Cost effective)
             speakWithBrowserTTS(text, targetCode); 
         }
     };
@@ -719,6 +714,8 @@
         if (isRecording) {
             recognition.stop();
         } else {
+            // Set user interaction flag immediately on mic click
+            hasUserInteracted = true; 
             if(recognition) {
                  recognition.lang = currentSourceCode;
             }
@@ -728,7 +725,7 @@
     
     // Text Input Detection (Allows translation when user types instead of speaking)
     let typingTimer;
-    const doneTypingInterval = 1000; // 1 second
+    const doneTypingInterval = 1000; 
     
     textA.addEventListener('keyup', () => {
         clearTimeout(typingTimer);
@@ -736,6 +733,8 @@
         if (text) {
             typingTimer = setTimeout(() => {
                 if (text.length > 3) { 
+                    // Manual typing is considered a user interaction, but we don't 
+                    // want it to auto-speak until the MIC has been used once.
                     translateAndDisplay(text);
                 }
             }, doneTypingInterval);
@@ -747,7 +746,7 @@
     
     // Speak Button (Always attached to Panel B - now used for replay)
     speakBtnB.addEventListener('click', () => {
-         // Use the dispatcher to select the correct TTS method
+         // Re-running the speaking function (this also counts as a valid user gesture)
          speakTranslation(textB.value, currentTargetCode);
     });
     
