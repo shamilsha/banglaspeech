@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unified Bidirectional Voice Translator (Android Error Resilient)</title>
+    <title>Unified Bidirectional Voice Translator (Optimized for iOS Safari)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -144,7 +144,7 @@
 <body>
 
 <div class="container-card">
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language Voice Translator (Android Error Resilient)</h1>
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language Voice Translator (Optimized for iOS)</h1>
     <p class="text-center text-gray-500 mb-6">Translation will auto-speak after your first successful microphone use. Session will stop automatically after 7 seconds.</p>
 
     <!-- Language Selectors (Source and Target) -->
@@ -294,6 +294,9 @@
     // --- Timeout ID for forced stop ---
     let recognitionTimeoutId = null; 
     
+    // --- Tracks if the current session successfully received a transcript ---
+    let sessionHadResult = false; 
+    
     // --- 2. Language Selector Initialization ---
     
     const populateLanguageSelectors = () => {
@@ -399,7 +402,7 @@
     };
 
 
-    // --- 4. Speech Recognition Lifecycle (Robust Cross-Platform Fix: New instance per use + Timeout) ---
+    // --- 4. Speech Recognition Lifecycle (Robust Teardown for iOS Safari) ---
 
     const checkMicSupport = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -420,13 +423,14 @@
 
         // CRITICAL FIX: Teardown and create NEW instance to prevent 'service-not-allowed'
         if (recognition) {
-            // Forcefully abort any lingering recognition process
             recognition.onend = null; 
             recognition.onerror = null;
             recognition.abort(); 
             recognition = null;
         }
         cleanupRecognition(); // Ensure timeout is cleared from previous run
+        
+        sessionHadResult = false; // Reset the result tracker for the new session
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognition = new SpeechRecognition();
@@ -462,6 +466,7 @@
         recognition.onresult = (event) => {
             // Result received, clear timeout and let onend handle cleanup
             clearTimeout(recognitionTimeoutId); 
+            sessionHadResult = true; // Set flag that we got a result
             
             const transcript = Array.from(event.results)
                 .map(result => result[0].transcript)
@@ -479,26 +484,42 @@
         recognition.onend = () => {
             // Final cleanup after the recognition session ends (either manually, by silence, or by timeout)
             cleanupRecognition(); 
+            // CRITICAL iOS FIX: Explicitly dereference the object
+            recognition = null;
         };
 
         recognition.onerror = (event) => {
             console.error('Speech Recognition Error:', event.error);
             
-            // --- ANDROID FIX: Provide specific feedback for 'no-speech' which causes the 'stuck' feeling ---
-            if (event.error === 'no-speech') {
-                errorMessage.textContent = `No speech detected. Please try again and speak clearly into the microphone.`;
-            } else {
-                errorMessage.textContent = `Microphone Error: ${event.error}. Please ensure microphone access is allowed.`;
-            }
+            let errorText = `Microphone Error: ${event.error}. Please ensure microphone access is allowed.`;
+            let displayError = true;
             
-            errorMessage.classList.remove('hidden');
+            // --- iOS/Safari Specific Fix: Suppress 'aborted' error if no speech was detected ---
+            if (event.error === 'aborted' && !sessionHadResult) {
+                // If it aborted AND we didn't get a result, show the gentle user prompt.
+                displayError = false; 
+                errorText = `Listening stopped. Please tap the microphone again and speak louder or sooner.`;
+                errorMessage.textContent = errorText;
+            } else if (event.error === 'no-speech') {
+                // Standard no-speech error
+                displayError = true;
+                errorText = `No speech detected. Please try again and speak clearly into the microphone.`;
+                errorMessage.textContent = errorText;
+            }
+
+            if (displayError || event.error === 'no-speech' || (event.error === 'aborted' && !sessionHadResult)) {
+                errorMessage.classList.remove('hidden');
+            } else {
+                errorMessage.classList.add('hidden');
+            }
+
             statusA.textContent = '... Error';
             statusA.classList.add('text-red-500');
             statusA.classList.remove('text-cyan-500');
 
             cleanupRecognition(); // Ensure cleanup on error
             
-            // Critical: Abort the recognition object to force resource release
+            // Critical: Abort and nullify the recognition object to force resource release
             if (recognition) {
                 recognition.abort();
                 recognition = null;
@@ -511,6 +532,9 @@
 
     const toggleRecording = () => {
         if (!isMicSupported) return;
+        
+        // Clear previous error messages when a new session starts
+        errorMessage.classList.add('hidden');
         
         if (isRecording) {
             // Manual stop logic: let onend handle the cleanup
