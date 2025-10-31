@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unified Bidirectional Voice Translator (7 Languages)</title>
+    <title>Unified Bidirectional Voice Translator (7 Languages, Selective TTS API)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -21,7 +21,7 @@
             background-color: white;
             padding: 3rem 2rem;
             border-radius: 1.5rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6p x rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
             max-width: 1000px;
             width: 100%;
             border-top: 5px solid #06B6D4;
@@ -95,13 +95,13 @@
 <body>
 
 <div class="container-card">
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language High-Quality Voice Translator</h1>
-    <p class="text-center text-gray-500 mb-6">Select your source language on the left and your target language on the right. Turkish is now included!</p>
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">7-Language Voice Translator (English/Bengali Source)</h1>
+    <p class="text-center text-gray-500 mb-6">Source language is limited to English or Bengali. High-quality speech is used for Bengali translation only.</p>
 
     <!-- Language Selectors (Source and Target) -->
     <div class="grid grid-cols-2 gap-4 mb-8">
         
-        <!-- Source Language Selector -->
+        <!-- Source Language Selector (Only English and Bengali) -->
         <div class="flex flex-col items-center space-y-2">
             <label for="source-language-select" class="text-gray-700 font-medium">Source Language:</label>
             <div class="select-wrapper w-full max-w-xs">
@@ -111,7 +111,7 @@
             </div>
         </div>
 
-        <!-- Target Language Selector -->
+        <!-- Target Language Selector (All 7 languages) -->
         <div class="flex flex-col items-center space-y-2">
             <label for="target-language-select" class="text-gray-700 font-medium">Target Language:</label>
             <div class="select-wrapper w-full max-w-xs">
@@ -203,41 +203,49 @@
     const targetLangSelect = document.getElementById('target-language-select');
     const swapBtn = document.getElementById('swap-btn');
 
-    // Consolidated Language List (7 languages: English, Italian, French, Spanish, Arabic, Bengali, Turkish)
+    // Consolidated Language List (7 languages)
     const LANGUAGES = [
         { code: 'en-US', name: 'English', voice: 'Puck' },
         { code: 'it-IT', name: 'Italian', voice: 'Aoede' }, 
         { code: 'fr-FR', name: 'French', voice: 'Charon' },
         { code: 'es-ES', name: 'Spanish', voice: 'Zephyr' },
         { code: 'ar-EG', name: 'Arabic (Egypt)', voice: 'Kore' },
-        { code: 'bn-BD', name: 'Bengali', voice: 'Achird' },
-        { code: 'tr-TR', name: 'Turkish', voice: 'Fenrir' } // Turkish is back!
+        { code: 'bn-BD', name: 'Bengali', voice: 'Achird' }, // API required for high-quality TTS
+        { code: 'tr-TR', name: 'Turkish', voice: 'Fenrir' }
     ];
-
+    
+    // Voices cache for browser TTS (must be loaded asynchronously)
+    let browserVoices = [];
+    
     // State variables for the current translation direction
     let currentSourceCode = 'en-US';
-    let currentTargetCode = 'it-IT'; // Default target to Italian
+    let currentTargetCode = 'bn-BD'; // Default target to Bengali
     
     // Speech Recognition and State
     let recognition = null;
     let isRecording = false;
-
+    
     // --- 2. Language Selector Initialization ---
     
     const populateLanguageSelectors = () => {
-        // Function to create and append options to a select element
-        const createOptions = (selectElement) => {
-            selectElement.innerHTML = ''; // Clear existing options
-            LANGUAGES.forEach(lang => {
-                const option = document.createElement('option');
-                option.value = lang.code;
-                option.textContent = lang.name;
-                selectElement.appendChild(option);
-            });
-        };
+        // 1. Target Selector (All 7 languages)
+        targetLangSelect.innerHTML = ''; 
+        LANGUAGES.forEach(lang => {
+            const option = document.createElement('option');
+            option.value = lang.code;
+            option.textContent = lang.name;
+            targetLangSelect.appendChild(option);
+        });
 
-        createOptions(sourceLangSelect);
-        createOptions(targetLangSelect);
+        // 2. Source Selector (Only English and Bengali) - User Constraint
+        sourceLangSelect.innerHTML = '';
+        const sourceLanguages = LANGUAGES.filter(lang => lang.code === 'en-US' || lang.code === 'bn-BD');
+        sourceLanguages.forEach(lang => {
+            const option = document.createElement('option');
+            option.value = lang.code;
+            option.textContent = lang.name;
+            sourceLangSelect.appendChild(option);
+        });
         
         // Set initial selections
         sourceLangSelect.value = currentSourceCode;
@@ -292,30 +300,37 @@
 
     const handleTargetChange = () => {
         const newTargetCode = targetLangSelect.value;
-        if (newTargetCode === currentSourceCode) {
-            // Swap if the user attempts to set Target == Source
-            sourceLangSelect.value = currentTargetCode;
-            currentSourceCode = currentTargetCode;
-        }
+        // No swap logic needed for target as source is heavily restricted
         currentTargetCode = newTargetCode;
         updateUI();
     };
 
     const swapLanguages = () => {
-        // Swap the selected values in the dropdowns
-        [sourceLangSelect.value, targetLangSelect.value] = [targetLangSelect.value, sourceLangSelect.value];
+        // Custom swap logic to respect the Source Language constraint (English/Bengali only)
         
-        // Update the state
-        currentSourceCode = sourceLangSelect.value;
-        currentTargetCode = targetLangSelect.value;
+        const newSource = targetLangSelect.value;
+        const newTarget = sourceLangSelect.value;
 
-        updateUI();
+        // Check if the proposed new source is one of the allowed source languages
+        if (newSource === 'en-US' || newSource === 'bn-BD') {
+            sourceLangSelect.value = newSource;
+            targetLangSelect.value = newTarget;
+            
+            currentSourceCode = newSource;
+            currentTargetCode = newTarget;
+            
+            updateUI();
+        } else {
+            // If the target language is not English or Bengali, we cannot swap it to be the source.
+            // We'll show a gentle reminder instead of swapping.
+            textB.value = `Cannot swap to use ${getLangByCode(newSource).name} as the source language. Only English and Bengali are supported for voice input.`;
+            speakBtnB.disabled = true;
+        }
     };
 
 
     // --- 4. Initialize Speech Recognition ---
     const initializeRecognition = () => {
-        // Check for browser support
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
         if (!SpeechRecognition) {
@@ -347,7 +362,6 @@
             textA.value = transcript;
             
             if (transcript) {
-                // Call translation with current source/target codes
                 translateAndDisplay(transcript);
             }
         };
@@ -381,6 +395,7 @@
         if (!sourceLang || !targetLang) return; 
 
         textB.placeholder = `Translating to ${targetLang.name}...`;
+        speakBtnB.disabled = true;
         
         // Construct the dynamic system prompt and user query
         const systemPrompt = `You are a highly accurate, professional language translator. Your only job is to translate the provided text from ${sourceLang.name} into a grammatically correct, natural-sounding ${targetLang.name} translation. Respond with ONLY the translated ${targetLang.name} text, nothing else.`;
@@ -391,9 +406,7 @@
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
         if (!apiKey) {
-            textB.value = "ERROR: API Key is missing. Please provide your Gemini API Key.";
-            speakBtnB.disabled = true;
-            console.error("API Key Missing.");
+            textB.value = "ERROR: API Key is missing. Translation will not work.";
             return;
         }
 
@@ -430,19 +443,59 @@
         textB.value = translatedText;
         textB.placeholder = `The ${targetLang.name} translation will appear here...`;
         
-        // Check for success
         const translationSuccessful = !(translatedText.includes("Error") || translatedText.includes("unavailable"));
 
-        // Enable speech button only if translation appears successful (for manual replay)
+        // Enable speech button only if translation appears successful
         speakBtnB.disabled = !translationSuccessful;
         
         // --- Speak automatically if successful ---
         if (translationSuccessful) {
-            speakWithGeminiTTS(translatedText, currentTargetCode);
+            speakTranslation(translatedText, currentTargetCode);
         }
     };
 
-    // --- 6. Text-to-Speech Utility Functions (for PCM to WAV conversion) ---
+    // --- 6. Text-to-Speech Utility Functions (Selective TTS) ---
+    
+    // --- 6A. Browser TTS Function (for all non-Bengali languages) ---
+    const speakWithBrowserTTS = (text, targetCode) => {
+        if (!('speechSynthesis' in window)) {
+            errorMessage.textContent = "Browser TTS (Speech Synthesis) is not supported.";
+            errorMessage.classList.remove('hidden');
+            return;
+        }
+
+        // Stop any currently speaking utterance
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Attempt to find a suitable voice
+        const langCodePrefix = targetCode.substring(0, 2);
+        const voice = browserVoices.find(v => v.lang.startsWith(langCodePrefix) && v.localService); // Prefer local voices
+        
+        if (voice) {
+            utterance.voice = voice;
+        } else {
+             // Fallback to setting just the language code
+            utterance.lang = targetCode; 
+        }
+        
+        utterance.pitch = 1.0;
+        utterance.rate = 1.0; 
+
+        speakBtnB.disabled = true;
+        utterance.onend = () => {
+            speakBtnB.disabled = false;
+        };
+        utterance.onerror = (e) => {
+            console.warn("Browser TTS Error - could not synthesize speech:", e);
+            speakBtnB.disabled = false;
+        };
+        
+        window.speechSynthesis.speak(utterance);
+    };
+
+    // --- 6B. Gemini API TTS Function (for Bengali only) ---
     
     // Convert base64 string to ArrayBuffer
     function base64ToArrayBuffer(base64) {
@@ -460,31 +513,30 @@
         const buffer = new ArrayBuffer(44 + pcm16.length * 2);
         const view = new DataView(buffer);
         
-        // Helper function to write bytes
         function writeString(view, offset, string) {
             for (let i = 0; i < string.length; i++) {
                 view.setUint8(offset + i, string.charCodeAt(i));
             }
         }
 
-        // RIFF chunk descriptor
-        writeString(view, 0, 'RIFF'); // ChunkID
-        view.setUint32(4, 36 + pcm16.length * 2, true); // ChunkSize
-        writeString(view, 8, 'WAVE'); // Format
+        // RIFF chunk descriptor (WAV header)
+        writeString(view, 0, 'RIFF'); 
+        view.setUint32(4, 36 + pcm16.length * 2, true); 
+        writeString(view, 8, 'WAVE'); 
 
         // fmt sub-chunk
-        writeString(view, 12, 'fmt '); // Subchunk1ID
-        view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+        writeString(view, 12, 'fmt '); 
+        view.setUint32(16, 16, true); 
         view.setUint16(20, 1, true); // AudioFormat (1 for PCM)
         view.setUint16(22, 1, true); // NumChannels (1 mono)
-        view.setUint32(24, sampleRate, true); // SampleRate
-        view.setUint32(28, sampleRate * 2, true); // ByteRate (SampleRate * NumChannels * BitsPerSample/8)
-        view.setUint16(32, 2, true); // BlockAlign (NumChannels * BitsPerSample/8)
+        view.setUint32(24, sampleRate, true); 
+        view.setUint32(28, sampleRate * 2, true); 
+        view.setUint16(32, 2, true); 
         view.setUint16(34, 16, true); // BitsPerSample (16 bit)
 
         // data sub-chunk
-        writeString(view, 36, 'data'); // Subchunk2ID
-        view.setUint32(40, pcm16.length * 2, true); // Subchunk2Size (NumSamples * NumChannels * BitsPerSample/8)
+        writeString(view, 36, 'data'); 
+        view.setUint32(40, pcm16.length * 2, true); 
 
         // Write the PCM data
         let offset = 44;
@@ -496,10 +548,8 @@
         return new Blob([buffer], { type: 'audio/wav' });
     }
 
-    // --- 7. Text-to-Speech (Speaking the Translation) ---
-    
-    // Function to handle the actual speaking logic using the Gemini TTS API for ALL languages
-    const speakWithGeminiTTS = async (text, targetCode) => {
+    // Function to handle the actual speaking logic using the Gemini TTS API
+    const speakWithGeminiTTSApi = async (text, targetCode) => {
         const targetLang = getLangByCode(targetCode);
         if (!text || !targetLang) return;
 
@@ -511,9 +561,10 @@
         const apiKey = "AIzaSyBEQukhkVCX_4xed29ByJYxszIDn8IPNgM"; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
 
+        // Error message for missing key specific to the TTS API
         if (!apiKey) {
             ttsLoading.classList.add('hidden');
-            errorMessage.textContent = "TTS Error: API Key is missing for high-quality speech generation.";
+            errorMessage.textContent = "TTS API Error: Key is missing. Bengali speech generation will not work.";
             errorMessage.classList.remove('hidden');
             speakBtnB.disabled = false;
             return;
@@ -559,7 +610,7 @@
                 const sampleRate = parseInt(sampleRateMatch[1], 10);
                 
                 const pcmData = base64ToArrayBuffer(audioData);
-                const pcm16 = new Int16Array(pcmData); // API returns signed PCM16
+                const pcm16 = new Int16Array(pcmData); 
                 
                 const wavBlob = pcmToWav(pcm16, sampleRate);
                 const audioUrl = URL.createObjectURL(wavBlob);
@@ -567,7 +618,7 @@
                 const audio = new Audio(audioUrl);
                 audio.play();
                 audio.onended = () => {
-                    URL.revokeObjectURL(audioUrl); // Clean up the URL object
+                    URL.revokeObjectURL(audioUrl); 
                     speakBtnB.disabled = false;
                 };
 
@@ -577,7 +628,7 @@
 
         } catch (error) {
             console.error("Gemini TTS Request Failed:", error);
-            errorMessage.textContent = `Speech Error: ${error.message}. Please check API key/permissions.`;
+            errorMessage.textContent = `Bengali Speech Error: ${error.message}. Check API key and quota.`;
             errorMessage.classList.remove('hidden');
 
         } finally {
@@ -585,17 +636,28 @@
             speakBtnB.disabled = false;
         }
     };
+    
+    // --- 6C. Main Speech Dispatcher ---
+    const speakTranslation = (text, targetCode) => {
+        ttsLoading.classList.add('hidden'); // Ensure API loading indicator is off by default
+        
+        if (targetCode === 'bn-BD') {
+            speakWithGeminiTTSApi(text, targetCode); // Use API for Bengali (High Quality)
+        } else {
+            // Use Browser TTS for all other languages (Cost effective)
+            speakWithBrowserTTS(text, targetCode); 
+        }
+    };
 
-
-    // --- 8. Event Listeners & Initialization ---
+    // --- 7. Event Listeners & Initialization ---
     
     // Voice Input Button (Always attached to Panel A)
     micBtnA.addEventListener('click', () => {
         if (isRecording) {
             recognition.stop();
         } else {
-            // Re-set the recognition language just before starting
             if(recognition) {
+                 // Ensure recognition is set to English or Bengali
                  recognition.lang = currentSourceCode;
             }
             recognition.start();
@@ -623,8 +685,8 @@
     
     // Speak Button (Always attached to Panel B - now used for replay)
     speakBtnB.addEventListener('click', () => {
-         // Replay the current translation using the high-quality function
-         speakWithGeminiTTS(textB.value, currentTargetCode);
+         // Use the dispatcher to select the correct TTS method
+         speakTranslation(textB.value, currentTargetCode);
     });
     
     // Swap Button
@@ -633,6 +695,17 @@
     // Language Selectors
     sourceLangSelect.addEventListener('change', handleSourceChange);
     targetLangSelect.addEventListener('change', handleTargetChange);
+    
+    // Load browser voices once they are available
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = () => {
+            browserVoices = window.speechSynthesis.getVoices();
+        };
+        // Load immediately if already available
+        if (window.speechSynthesis.getVoices().length > 0) {
+            browserVoices = window.speechSynthesis.getVoices();
+        }
+    }
 
 
     // Initial setup on page load
